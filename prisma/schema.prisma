@@ -1,0 +1,23 @@
+datasource db {
+    // You can edit provider
+    // provider = "mysql"
+    // provider = "postgresql"
+    // provider = "sqlserver"
+    // provider = "mongo"
+    provider = "sqlite"
+    url      = env("DATABASE_URL")
+}
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+model hideMessage {
+    id      String @id @unique @default(uuid())
+    // see https://core.telegram.org/bots/api#inlinequery
+    // inlineId      String @unique
+    user_id BigInt
+    text    String @default("")
+    // 2038 ¿
+    time    BigInt
+}
