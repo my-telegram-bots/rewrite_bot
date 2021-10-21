@@ -4,14 +4,15 @@
 [@rewrite_bot](https://t.me/rewrite_bot) is a text utils.  
 
 Bot can do the following kinds of things:  
-- remove URL's [UTM parameters](https://en.wikipedia.org/wiki/UTM_parameters)  
+- Remove URL's [UTM parameters](https://en.wikipedia.org/wiki/UTM_parameters)  
     - Include b23.tv
 - Add a space each character
+- md5 / base64 decode / base64 encode
 - Hide text
     - inline keyboard mode
     - message mode
 
-> Notice: We must store your input to our database in order to enable the hide function.
+> Notice: We must save your input to our database in order to enable the hide function.
 
 
 
