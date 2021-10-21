@@ -4,6 +4,10 @@ import { InlineQueryResult } from 'typegram'
 import sqlit_character from './handlers/sqlit_character'
 import remove_utm from './handlers/remove_utm'
 import crypto from 'crypto'
+import { hide_message, placeholdeize } from './handlers/hide_message'
+import { PrismaClient, userSetting as TuserSetting } from '.prisma/client'
+
+const prisma = new PrismaClient()
 
 bot.on('inline_query', async (ctx) => {
     let text = ctx.inlineQuery.query
@@ -13,12 +17,20 @@ bot.on('inline_query', async (ctx) => {
         cache_time: 10
     }
     if (text) {
+        const u = await prisma.userSetting.findFirst({
+            where: {
+                user_id: ctx.from.id
+            }
+        }) || {
+            user_id: ctx.from.id,
+            hideMode: 1,
+            hidePlaceholders: '["■","❔","❓"]'
+        }
         const rm_utm_text = await remove_utm(text)
         const splited_text = sqlit_character(text)
         const md5 = crypto.createHash('md5').update(text).digest('hex').toString()
         const base64_e = Buffer.from(text, 'utf-8').toString('base64')
         const base64_d = Buffer.from(text, 'base64').toString('utf-8')
-
         if (rm_utm_text !== text) {
             results.push({
                 id: 'rm utm',
@@ -30,7 +42,7 @@ bot.on('inline_query', async (ctx) => {
                 }
             })
         }
-        
+        results = [...results, ...await hide_message(text, <TuserSetting>u)]
         if (splited_text.length > 4000) { // 4096
             results.push({
                 id: 'text too long',
@@ -74,8 +86,7 @@ bot.on('inline_query', async (ctx) => {
             })
         }
 
-        // if (base64_d) {
-        if (true) {
+        if (base64_d && base64_d.length > 1) {
             results.push({
                 id: 'b d',
                 type: 'article',

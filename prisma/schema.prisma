@@ -13,11 +13,22 @@ generator client {
 }
 
 model hideMessage {
-    id      String @id @unique @default(uuid())
+    id           String @id @unique @default(uuid())
     // see https://core.telegram.org/bots/api#inlinequery
     // inlineId      String @unique
-    user_id BigInt
-    text    String @default("")
+    user_id      BigInt
+    text         String @default("")
+    count        Int    @default(0)
+    max_count    Int    @default(0)
+    status       Int    @default(1)
     // 2038 ¿
-    time    BigInt
+    time         BigInt
+    expired_time BigInt @default(0)
+}
+
+model userSetting {
+    user_id          BigInt @unique
+    hidePlaceholders String @default("[\"■\"]")
+    hideMode         Int    @default(1)
+    disabled         String @default("")
 }
