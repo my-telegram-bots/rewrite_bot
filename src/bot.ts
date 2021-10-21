@@ -9,7 +9,7 @@ bot.launch().then(async () => {
     try {
         // db test
         await prisma.$connect()
-        console.log(new Date(), 'bot started!')
+        console.log(new Date(), 'bot started!', bot.botInfo?.id, '@' + bot.botInfo?.username)
         if (MASTER_ID) {
             bot.telegram.sendMessage(MASTER_ID, `${new Date().toString()} bot started!`)
         }
@@ -22,5 +22,8 @@ bot.launch().then(async () => {
     process.exit()
 })
 
+bot.use((ctx, next) => {
+    next()
+})
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))

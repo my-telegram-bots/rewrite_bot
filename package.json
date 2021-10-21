@@ -5,7 +5,9 @@
   "license": "MIT",
   "author": "huggy",
   "scripts": {
-    "dev": "ts-node ./src/app.ts"
+    "dev": "ts-node ./src/app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js"
   },
   "prisma": {
     "seed": "ts-node ./prisma/seed.ts"

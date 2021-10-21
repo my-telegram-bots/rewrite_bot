@@ -1,4 +1,4 @@
-import emojiRegex from "emoji-regex"
+import emojiRegex from 'emoji-regex'
 const emoji_regex = emojiRegex()
 
 export default (text: string = '') => {
