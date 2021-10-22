@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client'
 import { Telegraf } from 'telegraf'
 import { BOT_TOKEN, MASTER_ID } from './config'
-const prisma = new PrismaClient()
+import { prisma } from './db'
 
 export const bot = new Telegraf(BOT_TOKEN)
 

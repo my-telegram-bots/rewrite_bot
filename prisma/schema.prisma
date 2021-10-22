@@ -20,7 +20,7 @@ model hideMessage {
     text         String @default("")
     count        Int    @default(0)
     max_count    Int    @default(0)
-    status       Int    @default(1)
+    status       Int    @default(0)
     // 2038 ¿
     time         BigInt
     expired_time BigInt @default(0)

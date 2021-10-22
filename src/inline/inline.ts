@@ -1,13 +1,12 @@
-import { bot } from './bot'
+import { bot } from '../bot'
 import { ExtraAnswerInlineQuery } from 'telegraf/typings/telegram-types'
 import { InlineQueryResult } from 'typegram'
-import sqlit_character from './handlers/sqlit_character'
-import remove_utm from './handlers/remove_utm'
+import sqlit_character from '../handlers/sqlit_character'
+import remove_utm from '../handlers/remove_utm'
 import crypto from 'crypto'
-import { hide_message, placeholdeize } from './handlers/hide_message'
-import { PrismaClient, userSetting as TuserSetting } from '.prisma/client'
-
-const prisma = new PrismaClient()
+import { hide_message, placeholdeize } from '../handlers/hide_message'
+import { userSetting as TuserSetting } from '.prisma/client'
+import { prisma } from '../db'
 
 bot.on('inline_query', async (ctx) => {
     let text = ctx.inlineQuery.query

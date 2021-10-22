@@ -1,10 +1,10 @@
-import { PrismaClient, userSetting as TuserSetting } from '@prisma/client'
+import { userSetting as TuserSetting } from '@prisma/client'
 import emojiRegex from 'emoji-regex'
 import { Markup } from 'telegraf'
 import { InlineQueryResult, InlineKeyboardButton } from 'typegram'
 import { bot } from '../bot'
+import { prisma } from '../db'
 
-const prisma = new PrismaClient()
 const emoji_regex = emojiRegex()
 /**
  * text to ■■■■ or other char
@@ -35,7 +35,8 @@ export async function hide_message(text: string, u: TuserSetting/*, user_id: big
         data: {
             user_id: u.user_id,
             text: text,
-            time: Math.floor(+new Date() / 1000)
+            time: Math.floor(+new Date() / 1000),
+            status: 0
         }
     })
     return JSON.parse(u.hidePlaceholders).map((h: string, id: number) => {
@@ -52,7 +53,8 @@ export async function hide_message(text: string, u: TuserSetting/*, user_id: big
             }
         }
         return <InlineQueryResult>{
-            id: 'p-' + id,
+            // h = hide
+            id: `h|${d.id}|${id}`,
             type: 'article',
             title: h,
             description: ptext.substr(0, 64),
@@ -67,10 +69,10 @@ export async function hide_message(text: string, u: TuserSetting/*, user_id: big
         }
     })
 }
-export async function get_real_message(uuid: string): Promise<any> {
+export async function get_real_message(id: string): Promise<any> {
     let d = await prisma.hideMessage.findFirst({
         where: {
-            id: uuid
+            id: id
         }
     })
     return d?.text
