@@ -11,7 +11,7 @@ export async function clean_database(): Promise<Boolean> {
                 status: 0
             }, {
                 time: {
-                    lte: Math.floor(+new Date() / 1000) - 60
+                    lte: Math.floor(+new Date() / 1000) - 10
                 }
             }]
         }
@@ -22,7 +22,6 @@ export async function clean_database(): Promise<Boolean> {
     return true
 }
 
-clean_database()
 setInterval(() => {
     clean_database()
-}, 1000)
+}, 600 * 1000)
