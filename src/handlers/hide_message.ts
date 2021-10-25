@@ -20,6 +20,7 @@ export function placeholdeize(text: string, placeholder = '■', mode = 1) {
         return [' ', '\n'].includes(c) ? c : placeholder
     }).join('')
 }
+
 /**
  * hide message by text
  */
@@ -63,11 +64,22 @@ export async function hide_message(text: string, u: TuserSetting/*, user_id: big
         }
     })
 }
+
 export async function get_real_message(id: string): Promise<any> {
     let d = await prisma.hideMessage.findFirst({
         where: {
             id: id
         }
     })
+    if (d?.status === 0) {
+        await prisma.hideMessage.update({
+            where: {
+                id: id
+            },
+            data: {
+                status: 1
+            }
+        })
+    }
     return d?.text
 }
