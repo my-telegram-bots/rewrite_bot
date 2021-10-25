@@ -3,7 +3,7 @@ import { get_real_message } from '../handlers/hide_message'
 
 bot.start(async (ctx) => {
     if (ctx.startPayload) {
-        let text = 'error'
+        let text = ''
         const stext = ctx.startPayload.split('_')
         // sdata[0]
         switch (stext[0]) {
@@ -14,7 +14,9 @@ bot.start(async (ctx) => {
             default:
                 break;
         }
-        ctx.reply(text)
+        if (text) {
+            ctx.reply(text)
+        }
     } else {
         ctx.reply('Welcome to use rewrite bot')
     }

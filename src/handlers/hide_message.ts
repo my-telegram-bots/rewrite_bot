@@ -20,17 +20,10 @@ export function placeholdeize(text: string, placeholder = '■', mode = 1) {
         return [' ', '\n'].includes(c) ? c : placeholder
     }).join('')
 }
-
+/**
+ * hide message by text
+ */
 export async function hide_message(text: string, u: TuserSetting/*, user_id: bigint*/): Promise<InlineQueryResult[]> {
-    // const u = await prisma.userSetting.findFirst({
-    //     where: {
-    //         user_id
-    //     }
-    // }) || {
-    //     hidePlaceholders: '["■"]',
-    //     hideMode: 1
-    // }
-    // sqlite and sqlserver didn't support JSON directly
     let d = await prisma.hideMessage.create({
         data: {
             user_id: u.user_id,
@@ -39,9 +32,10 @@ export async function hide_message(text: string, u: TuserSetting/*, user_id: big
             status: 0
         }
     })
-    return JSON.parse(u.hidePlaceholders).map((h: string, id: number) => {
-        let ptext = placeholdeize(text, h, u.hideMode)
-        //let button = Markup.button.callback('Read', `r_${d.id}`)
+    // sqlite and sqlserver didn't support JSON directly
+    return JSON.parse(u.hide_placeholders).map((h: string, id: number) => {
+        let ptext = placeholdeize(text, h, u.hide_mode)
+        // let button = Markup.button.callback('Read', `r_${d.id}`)
         let button: InlineKeyboardButton = {
             text: 'Read',
             callback_data: `r_${d.id}`

@@ -26,9 +26,19 @@ model hideMessage {
     expired_time BigInt @default(0)
 }
 
+// message mode support
+// don't need gc
+// need text(or text placeholders)
+model normalMessage {
+    id           String @id @unique @default(uuid())
+    user_id      BigInt
+    message_id   BigInt
+    text         String @default("") // or caption
+    time         BigInt
+}
 model userSetting {
-    user_id          BigInt @unique
-    hidePlaceholders String @default("[\"■\"]")
-    hideMode         Int    @default(1)
-    disabled         String @default("")
+    user_id           BigInt @unique
+    hide_placeholders String @default("")
+    hide_mode         Int    @default(1)
+    disabled          String @default("")
 }
