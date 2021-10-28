@@ -6,7 +6,7 @@ import remove_utm from '../handlers/remove_utm'
 import crypto from 'crypto'
 import { hide_message, placeholdeize } from '../handlers/hide_message'
 import { userSetting as TuserSetting } from '.prisma/client'
-import { prisma } from '../db'
+import { d_get_userSetting, prisma } from '../db'
 
 bot.on('inline_query', async (ctx) => {
     let text = ctx.inlineQuery.query
@@ -16,15 +16,7 @@ bot.on('inline_query', async (ctx) => {
         cache_time: 10
     }
     if (text) {
-        const u = await prisma.userSetting.findFirst({
-            where: {
-                user_id: ctx.from.id
-            }
-        }) || {
-            user_id: ctx.from.id,
-            hideMode: 1,
-            hidePlaceholders: '["■","❔","❓"]'
-        }
+        const u = await d_get_userSetting(ctx.from.id)
         const rm_utm_text = await remove_utm(text)
         const splited_text = sqlit_character(text)
         const md5 = crypto.createHash('md5').update(text).digest('hex').toString()
@@ -41,7 +33,11 @@ bot.on('inline_query', async (ctx) => {
                 }
             })
         }
-        results = [...results, ...await hide_message(text, <TuserSetting>u)]
+        results = [...results, ...await hide_message({
+            text: text,
+            mode: 'inline',
+            type: 1
+        }, <TuserSetting>u)]
         if (splited_text.length > 4000) { // 4096
             results.push({
                 id: 'text too long',

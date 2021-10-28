@@ -13,7 +13,7 @@ bot.launch().then(async () => {
             bot.telegram.sendMessage(MASTER_ID, `${new Date().toString()} bot started!`)
         }
     } catch (error) {
-
+        console.log(new Date(), 'bot error', error)
     }
 }).catch((e) => {
     console.error(e)

@@ -1,23 +1,24 @@
 import { bot } from '../bot'
 import { prisma } from '../db'
+import { honsole } from '../handlers/common'
 
 
 bot.on('chosen_inline_result', async (ctx) => {
-    const sresult_id = ctx.chosenInlineResult.result_id.split('|')
-    switch (sresult_id[0]) {
+    const sresult = ctx.chosenInlineResult.result_id.split('|')
+    switch (sresult[0]) {
         case 'h':
             try {
                 await prisma.hideMessage.update({
                     where: {
-                        id: sresult_id[1]
+                        id: sresult[1]
                     },
                     data: {
                         status: 1
                     }
                 })
-                console.log('[ok]', 'change state', sresult_id[1], 'ok')
+                honsole.dev('[ok]', 'change state', sresult[1], 'ok')
             } catch (error) {
-                console.warn('[error]', 'change state', sresult_id[1], 'error', error)
+                console.warn('[error]', 'change state', sresult[1], 'error', error)
             }
             break
     }

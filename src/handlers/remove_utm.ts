@@ -21,7 +21,6 @@ const hostname_replace = {
 const short_url_service_domain = ['g.co', 'aka.ms', 'amazon.to', 't.co', 'u.nu', 'bit.ly', 'tinyurl.com', 't.cn', 'b23.tv']
 
 export async function get_redirect(url = '', retry_time = 0): Promise<string> {
-    console.log(url, retry_time)
     if (retry_time < 5) {
         try {
             // detect new url with proxy
@@ -66,7 +65,6 @@ export async function real_remove_utm(url = ''): Promise<string> {
     try {
         const u = new URL(url)
         const uu = u.searchParams
-        console.log('u', url)
         let hostname: string = u.hostname
         if (hostname.split('.').length === 2) {
             hostname = 'www.' + hostname
@@ -100,9 +98,9 @@ export async function real_remove_utm(url = ''): Promise<string> {
 }
 export default async (text = ''): Promise<string> => {
     let stext = await Promise.all(text.split('\n').map(async (l) => {
-        return (await Promise.all(l.split(' ').map(async (l) => {
+        return (await Promise.all(l.split('http').map(async (l) => {
             return await real_remove_utm(l)
-        }))).join(' ')
+        }))).join('http')
     }))
     return stext.join('\n')
 }

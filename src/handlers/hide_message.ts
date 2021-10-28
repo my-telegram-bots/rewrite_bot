@@ -4,6 +4,7 @@ import { Markup } from 'telegraf'
 import { InlineQueryResult, InlineKeyboardButton } from 'typegram'
 import { bot } from '../bot'
 import { prisma } from '../db'
+import { ThideText } from '../schema'
 
 const emoji_regex = emojiRegex()
 /**
@@ -24,24 +25,24 @@ export function placeholdeize(text: string, placeholder = '■', mode = 1) {
 /**
  * hide message by text
  */
-export async function hide_message(text: string, u: TuserSetting/*, user_id: bigint*/): Promise<InlineQueryResult[]> {
+export async function hide_message(m: ThideText, u: TuserSetting): Promise<InlineQueryResult[]> {
     let d = await prisma.hideMessage.create({
         data: {
             user_id: u.user_id,
-            text: text,
+            text: m.text,
             time: Math.floor(+new Date() / 1000),
             status: 0
         }
     })
-    // sqlite and sqlserver didn't support JSON directly
+    // sqlite and sqlserver dont't support JSON directly
     return JSON.parse(u.hide_placeholders).map((h: string, id: number) => {
-        let ptext = placeholdeize(text, h, u.hide_mode)
+        let ptext = placeholdeize(m.text, h, u.hide_mode)
         // let button = Markup.button.callback('Read', `r_${d.id}`)
         let button: InlineKeyboardButton = {
             text: 'Read',
             callback_data: `r_${d.id}`
         }
-        if (text.length > 199) {
+        if (m.text.length > 199) {
             button = {
                 text: 'Read',
                 url: `https://t.me/${bot.botInfo?.username}?start=${encodeURIComponent(`r_${d.id}`)}`,

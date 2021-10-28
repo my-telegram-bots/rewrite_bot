@@ -2,20 +2,19 @@ import { CallbackQuery } from 'typegram'
 import { bot } from '../bot'
 import { get_real_message } from '../handlers/hide_message'
 bot.on('callback_query', async (ctx, next) => {
-    // WTF is typescript?
-    // It's cost me 20min to write this s**t.
-    const callbackQuery0: any = ctx.callbackQuery
-    const callbackQuery: CallbackQuery.DataCallbackQuery = callbackQuery0
+    
+    // @ts-ignore
+    let data = ctx.callbackQuery.data
     let text = 'error'
-    if (callbackQuery.data) {
-        const data = callbackQuery.data
+    if (data) {
         const sdata = data.split('_')
         // sdata[0]
         switch (sdata[0]) {
+            // r = read
             case 'r':
                 text = await get_real_message(sdata[1])
                 break
-
+            
             default:
                 break
         }
@@ -25,7 +24,7 @@ bot.on('callback_query', async (ctx, next) => {
         cache_time: 600
     })
 })
-// I can't test this regex 
+// I can't test this regex
 //           r\_(.{8}\-.{4}\-.{4}\-.{4}\-.{12})
 // bot.hears(/r_(.*)/, (ctx => {
 //     //await get_real_message()
