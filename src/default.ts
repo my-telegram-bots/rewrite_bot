@@ -5,7 +5,7 @@ export function DuserSetting(user_id: number | bigint): userSetting {
         // @ts-ignore
         user_id: user_id,
         hide_mode: 1,
-        hide_placeholders: '["■","❔","❓"]',
+        hide_placeholders: '["█","❔","❓","🍞"]',
         expired_time_offset: 0,
         disabled: ''
     }

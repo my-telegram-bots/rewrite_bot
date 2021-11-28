@@ -8,12 +8,12 @@ import { ThideText } from '../schema'
 
 const emoji_regex = emojiRegex()
 /**
- * text to ■■■■ or other char
+ * text to ████ or other char
  * @param text @requires
  * @param placeholder @requires
  * @returns text
  */
-export function placeholdeize(text: string, placeholder = '■', mode = 1) {
+export function placeholdeize(text: string, placeholder = '█', mode = 1) {
     for (const match of text.matchAll(emoji_regex)) {
         text = text.replace(match[0], 'h')
     }
