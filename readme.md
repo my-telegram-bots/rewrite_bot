@@ -12,9 +12,9 @@ Bot can do the following kinds of things:
     - inline keyboard mode
     - message mode
 
-> Notice: Bot must save your input to our database in order to enable hide function.
-
-
+# Privacy Policy
+- Bot do not collect any unwanted text / user information.
+- Bot must save you input to my database in order to enable hide function.
 # License
 MIT
 

@@ -1,22 +1,26 @@
 import axios from 'axios'
 import { REDIRECT_CHECK_API } from '../config'
 // utm_* see wiki https://en.wikipedia.org/wiki/UTM_parameters
-const utm_params = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content','fbclid']
+const utm_params = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid']
 // need help
 // Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ "www.bilibili.com": string[]; }'.
-const hostname_utm_params_blacklist = JSON.parse(JSON.stringify({
+const hostname_utm_params_blacklist = {
     // www = @
     'www.bilibili.com': ['share_medium', 'share_plat', 'share_session_id', 'share_source', 'share_tag', 'timestamp', 'unique_k'],
     'www.twitter.com': ['t', 's'],
     'mobile.twitter.com': ['t', 's']
-}))
-const hostname_utm_params_whitelist = JSON.parse(JSON.stringify({
+}
+const hostname_utm_params_whitelist = {
     'item.taobao.com': ['id'],
     'a.m.taobao.com': [],
     'detail.tmall.com': ['id']
-}))
+}
 const hostname_replace = {
 
+}
+// 感觉很侵入性，后面有机会再来优化了 ~~出锅以后再说~~
+const hostname_url_replace = {
+    'www.bilibili.com': [['?p=1', '']],
 }
 const short_url_service_domain = ['g.co', 'aka.ms', 'amazon.to', 't.co', 'u.nu', 'bit.ly', 'tinyurl.com', 't.cn', 'b23.tv']
 
@@ -37,7 +41,7 @@ export async function get_redirect(url = '', retry_time = 0): Promise<string> {
                     maxRedirects: 0,
                     timeout: 2000,
                     headers: {
-                        // maybe need accepted-languages and so on....
+                        // maybe need accepted-languages or other fields....
                         // get newest useragent from https://t.me/chrome_useragent
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.40 Safari/537.36'
                     }
@@ -66,13 +70,16 @@ export async function real_remove_utm(url = ''): Promise<string> {
         const u = new URL(url)
         const uu = u.searchParams
         let hostname: string = u.hostname
+        // www = @
         if (hostname.split('.').length === 2) {
             hostname = 'www.' + hostname
         }
+        // @ts-ignore
         if (hostname_utm_params_whitelist[hostname]) {
             // rm all params
             const wu = new URL(url.replace(u.search, ''))
             const wuu = wu.searchParams
+            // @ts-ignore
             hostname_utm_params_whitelist[hostname].forEach((p: string) => {
                 if (uu.get(p)) {
                     wuu.set(p, <string>uu.get(p))
@@ -81,7 +88,9 @@ export async function real_remove_utm(url = ''): Promise<string> {
             url = wu.href
         } else {
             let rm_params = utm_params
+            // @ts-ignore
             if (hostname_utm_params_blacklist[hostname]) {
+                // @ts-ignore
                 rm_params = [...rm_params, ...hostname_utm_params_blacklist[hostname]]
             }
             rm_params.forEach((p) => {
@@ -90,6 +99,10 @@ export async function real_remove_utm(url = ''): Promise<string> {
             if (short_url_service_domain.includes(u.hostname)) {
                 return await real_remove_utm(await get_redirect(url))
             }
+            // @ts-ignore
+            hostname_url_replace[hostname].forEach(([u1, u2]) => {
+                u.href = u.href.replace(u1, u2)
+            })
             url = u.href
         }
     } catch (error) {
@@ -100,7 +113,7 @@ export default async (text = ''): Promise<string> => {
     let stext = await Promise.all(text.split('\n').map(async (l) => {
         return (await Promise.all(l.split('http').map(async (l) => {
             return await real_remove_utm(l)
-        }))).join('http')
+        }))).join('\n')
     }))
     return stext.join('\n')
 }
