@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { REDIRECT_CHECK_API } from '../config'
 // utm_* see wiki https://en.wikipedia.org/wiki/UTM_parameters
-const utm_params = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content']
+const utm_params = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content','fbclid']
 // need help
 // Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ "www.bilibili.com": string[]; }'.
 const hostname_utm_params_blacklist = JSON.parse(JSON.stringify({

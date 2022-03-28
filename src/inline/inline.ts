@@ -7,7 +7,6 @@ import crypto from 'crypto'
 import { hide_message, placeholdeize } from '../handlers/hide_message'
 import { userSetting as TuserSetting } from '.prisma/client'
 import { d_get_userSetting, prisma } from '../db'
-
 bot.on('inline_query', async (ctx) => {
     let text = ctx.inlineQuery.query
     let results: InlineQueryResult[] = []
@@ -81,17 +80,17 @@ bot.on('inline_query', async (ctx) => {
             })
         }
 
-        if (base64_d && base64_d.length > 1) {
-            results.push({
-                id: 'b d',
-                type: 'article',
-                title: 'base64 decode (may error)',
-                description: base64_d,
-                input_message_content: {
-                    message_text: base64_d
-                }
-            })
-        }
+        // if (base64_d && base64_d.length > 1) {
+        //     results.push({
+        //         id: 'b d',
+        //         type: 'article',
+        //         title: 'base64 decode (may error)',
+        //         description: base64_d,
+        //         input_message_content: {
+        //             message_text: base64_d
+        //         }
+        //     })
+        // }
     } else {
         options = {
             is_personal: true,
