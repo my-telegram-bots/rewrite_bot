@@ -110,33 +110,33 @@ export async function real_remove_utm(url = ''): Promise<string> {
         if (whitelist.length > 0) {
             // rm all params
             const wu = new URL(url.replace(u.search, ''))
-            const wuu = wu.searchParams
             whitelist.forEach((p: string) => {
                 if (uu.get(p)) {
-                    wuu.set(p, <string>uu.get(p))
+                    wu.searchParams.set(p, <string>uu.get(p))
                 }
             })
             url = wu.href
-        }
-        let blacklist: any[] = utm_params['/']
-
-        if (hostname_utm_params_blacklist[hostname]) {
-            let temp_blacklist: any = []
-            for (const key in hostname_utm_params_blacklist[hostname]) {
-                if (u.pathname.startsWith(key)) {
-                    // blacklist = [...blacklist, hostname_utm_params_blacklist[hostname][key]]
-                    temp_blacklist = hostname_utm_params_blacklist[hostname][key]
-                    // match to end
-                    // break
+        } else {
+            let blacklist: any[] = utm_params['/']
+            if (hostname_utm_params_blacklist[hostname]) {
+                let temp_blacklist: any = []
+                for (const key in hostname_utm_params_blacklist[hostname]) {
+                    if (u.pathname.startsWith(key)) {
+                        // blacklist = [...blacklist, hostname_utm_params_blacklist[hostname][key]]
+                        temp_blacklist = hostname_utm_params_blacklist[hostname][key]
+                        // match to end
+                        // break
+                    }
+                }
+                if (temp_blacklist.length > 0) {
+                    blacklist = [...temp_blacklist, ...blacklist]
                 }
             }
-            if (temp_blacklist.length > 0) {
-                blacklist = [...temp_blacklist, ...blacklist]
-            }
+            blacklist.forEach((p) => {
+                uu.delete(p)
+            })
+            url = u.href
         }
-        blacklist.forEach((p) => {
-            uu.delete(p)
-        })
         let url_replace_list: Array<[string, string]> = []
         for (const key in hostname_url_replace[hostname]) {
             if (u.pathname.startsWith(key)) {
@@ -145,9 +145,8 @@ export async function real_remove_utm(url = ''): Promise<string> {
             }
         }
         url_replace_list.forEach(([u1, u2]) => {
-            u.href = u.href.replace(u1, u2)
+            url = url.replace(u1, u2)
         })
-        url = u.href
     } catch (error) {
     }
     return url
