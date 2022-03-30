@@ -13,7 +13,7 @@ Bot can do the following kinds of things:
     - message mode
 
 # Privacy Policy
-- Bot do not collect any unwanted text / user information.
+- Bot do not collect any unwanted chat history / text / user information.
 - Bot must save you input to my database in order to enable hide function.
 # License
 MIT

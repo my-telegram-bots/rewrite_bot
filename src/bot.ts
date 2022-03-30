@@ -24,5 +24,9 @@ bot.launch().then(async () => {
 bot.use((ctx, next) => {
     next()
 })
+bot.catch(async (err, ctx) => {
+    await ctx.telegram.sendMessage(MASTER_ID, 'got error' + err)
+    await ctx.telegram.sendMessage(MASTER_ID, JSON.stringify(err))
+})
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))
