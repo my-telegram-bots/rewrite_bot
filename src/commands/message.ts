@@ -3,7 +3,7 @@ import { bot } from '../bot';
 import { honsole } from '../handlers/common';
 import { real_remove_utm } from '../handlers/remove_utm';
 
-bot.on('text', async (ctx) => {
+bot.on('text', async (ctx, next) => {
   let text = ctx.message.text
   if (ctx.message.entities && ctx.message.entities.length > 0) {
     let new_offset_list: number[] = []
@@ -47,4 +47,5 @@ bot.on('text', async (ctx) => {
       })
     }
   }
+  next()
 })

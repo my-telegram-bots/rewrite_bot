@@ -29,6 +29,12 @@ const hostname_utm_params_whitelist: domainPathParamsList = {
     },
     'detail.tmall.com': {
         '/': ['id']
+    },
+    'm.weibo.cn': {
+        '/status': []
+    },
+    'www.zhihu.com': {
+        '/question/': []
     }
 }
 const hostname_map = {
@@ -40,7 +46,7 @@ const hostname_url_replace: domainPathUrlReplaceList = {
         '/video/': [['?p=1', '']],
     }
 }
-const short_url_service_domain = ['g.co', 'aka.ms', 'amazon.to', 't.co', 'u.nu', 'bit.ly', 'tinyurl.com', 'b23.tv']
+const short_url_service_domain = ['g.co', 'aka.ms', 'amazon.to', 't.co', 'u.nu', 'bit.ly', 'tinyurl.com', 'b23.tv', 'aka.ms']
 
 export async function get_redirect(url = '', retry_time = 0): Promise<string> {
     if (retry_time < 5) {
@@ -97,17 +103,19 @@ export async function real_remove_utm(url = ''): Promise<string> {
         }
         //             bad
         let whitelist: any = []
+        let white_flag = false
         if (hostname_utm_params_whitelist[hostname]) {
             for (const key in hostname_utm_params_whitelist[hostname]) {
                 if (u.pathname.startsWith(key)) {
                     // whitelist = [...whitelist, hostname_utm_params_whitelist[hostname][key]]
                     whitelist = hostname_utm_params_whitelist[hostname][key]
+                    white_flag = true
                     // match to end
                     // break
                 }
             }
         }
-        if (whitelist.length > 0) {
+        if (white_flag) {
             // rm all params
             const wu = new URL(url.replace(u.search, ''))
             whitelist.forEach((p: string) => {
