@@ -35,6 +35,12 @@ const hostname_utm_params_whitelist: domainPathParamsList = {
     },
     'www.zhihu.com': {
         '/question/': []
+    },
+    'music.163.com': {
+        '/song': ['id']
+    },
+    'y.music.163.com': {
+        '/m/song': ['id']
     }
 }
 const hostname_map = {
