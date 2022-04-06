@@ -53,7 +53,7 @@ export async function hide_message(m: ThideText, u: TuserSetting): Promise<Inlin
             id: `h|${d.id}|${id}`,
             type: 'article',
             title: h,
-            description: ptext.substr(0, 64),
+            description: ptext.substring(0, h.length === 1 ? 64 : (64 * h.length - (ptext.replaceAll(' ', '').replaceAll('\n', '').length * (h.length - 1)))),
             input_message_content: {
                 message_text: ptext
             },

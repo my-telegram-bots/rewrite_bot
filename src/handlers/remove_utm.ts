@@ -41,6 +41,9 @@ const hostname_utm_params_whitelist: domainPathParamsList = {
     },
     'y.music.163.com': {
         '/m/song': ['id']
+    },
+    'mobile.yangkeduo.com': {
+        '/goods1.html': ['goods_id']
     }
 }
 const hostname_map = {
@@ -166,10 +169,10 @@ export async function real_remove_utm(url = ''): Promise<string> {
     return url
 }
 export default async (text = ''): Promise<string> => {
-    let stext = await Promise.all(text.replaceAll('http',' http').split('\n').map(async (l) => {
+    let stext = await Promise.all(text.replaceAll('http', ' http').split('\n').map(async (l) => {
         return (await Promise.all(l.split(' ').map(async (l) => {
             return (await real_remove_utm(l))
         }))).join(' ')
     }))
-    return stext.join('\n').replaceAll(' http','http')
+    return stext.join('\n').replaceAll('  http', 'http')
 }

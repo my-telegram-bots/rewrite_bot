@@ -26,7 +26,7 @@ bot.on('inline_query', async (ctx) => {
                 id: 'rm utm',
                 type: 'article',
                 title: 'rm utm params',
-                description: rm_utm_text.substr(0, 64),
+                description: rm_utm_text.substring(0, 64),
                 input_message_content: {
                     message_text: rm_utm_text
                 }
@@ -51,7 +51,7 @@ bot.on('inline_query', async (ctx) => {
                 id: 's c',
                 type: 'article',
                 title: 'split character',
-                description: splited_text.substr(0, 64),
+                description: splited_text.substring(0, 64),
                 input_message_content: {
                     message_text: splited_text
                 }
@@ -80,17 +80,17 @@ bot.on('inline_query', async (ctx) => {
             })
         }
 
-        // if (base64_d && base64_d.length > 1) {
-        //     results.push({
-        //         id: 'b d',
-        //         type: 'article',
-        //         title: 'base64 decode (may error)',
-        //         description: base64_d,
-        //         input_message_content: {
-        //             message_text: base64_d
-        //         }
-        //     })
-        // }
+        if (base64_d && base64_d.length > 1) {
+            results.push({
+                id: 'b d',
+                type: 'article',
+                title: 'base64 decode (may error)',
+                description: base64_d,
+                input_message_content: {
+                    message_text: base64_d
+                }
+            })
+        }
     } else {
         options = {
             is_personal: true,

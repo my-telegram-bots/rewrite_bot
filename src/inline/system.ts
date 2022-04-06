@@ -7,7 +7,7 @@ bot.on('inline_query', async (ctx, next) => {
     if (ctx.inlineQuery.query.startsWith('!s ')) {
         let user_id = ctx.from.id
         let result: InlineQueryResult[] = []
-        const command = ctx.inlineQuery.query.substr(3)
+        const command = ctx.inlineQuery.query.substring(3)
         if (parseInt(command) !== NaN) {
             let d = await prisma.normalMessage.findFirst({
                 where: {
