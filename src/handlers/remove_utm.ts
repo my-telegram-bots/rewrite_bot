@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { REDIRECT_CHECK_API } from '../config'
 import { domainPathParamsList, domainPathUrlReplaceList } from '../schema'
+
 // utm_* see wiki https://en.wikipedia.org/wiki/UTM_parameters
 const utm_params = {
     '/': ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid']
@@ -46,58 +47,86 @@ const hostname_utm_params_whitelist: domainPathParamsList = {
         '/goods1.html': ['goods_id']
     }
 }
-const hostname_map = {
-    'mobile.twitter.com': 'www.twitter.com',
-}
 // 感觉很侵入性，后面有机会再来优化了 ~~出锅以后再说~~
 const hostname_url_replace: domainPathUrlReplaceList = {
     'www.bilibili.com': {
         '/video/': [['?p=1', '']],
+    },
+    'mobile.twitter.com': {
+        '/': [['mobile.', '']]
     }
 }
-const short_url_service_domain = ['g.co', 'aka.ms', 'amazon.to', 't.co', 'u.nu', 'bit.ly', 'tinyurl.com', 'b23.tv', 'aka.ms']
+const short_url_service_domain = ['g.co', 'aka.ms', 'amazon.to', 't.co', 'u.nu', 'bit.ly', 'tinyurl.com', 'b23.tv', 'aka.ms', 't.cn']
 
-export async function get_redirect(url = '', retry_time = 0): Promise<string> {
+
+/**
+ * Got `Location` Header
+ * maybe got loooop if someone try to redirect itself LOL
+ * @param raw_url 
+ * @param retry_time 
+ * @returns 
+ */
+export async function get_redirect(raw_url = '', retry_time = 0): Promise<string> {
+    let url = raw_url
     if (retry_time < 5) {
-        try {
-            // detect new url with proxy
-            // prevent attack & trace (IP owner is cloudflare)
-            if (REDIRECT_CHECK_API) {
-                let s = <string>(await axios.get(REDIRECT_CHECK_API + url, {
-                    timeout: 2000
-                })).data
-                return s
-            } else {
-                let data = await axios({
+        // detect new url with proxy
+        // prevent attack & trace (IP owner is cloudflare)
+        if (!!REDIRECT_CHECK_API) {
+            try {
+                let s = await axios.get(REDIRECT_CHECK_API + raw_url, {
+                    timeout: 3000
+                })
+                if (s.data) {
+                    url = <string>s.data
+                }
+            } catch (error) {
+                if (retry_time > 1) {
+                    console.error(error)
+                    return url
+                } else {
+                    url = await get_redirect(raw_url, retry_time + 1)
+                }
+            }
+        } else {
+            try {
+                let s = await axios({
                     method: 'GET',
                     url: url,
                     maxRedirects: 0,
-                    timeout: 2000,
+                    timeout: 3000,
                     headers: {
                         // maybe need accepted-languages or other fields....
                         // get newest useragent from https://t.me/chrome_useragent
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.40 Safari/537.36'
                     }
                 })
-                if ((<string>data.data).includes('Checking your browser') && data.headers.server && data.headers.server === 'cloudflare') {
+                if (s.headers.Location || s.headers.location) {
+                    url = s.headers.Location || s.headers.location
+                } else if ((<string>s.data).includes('Checking your browser') && s.headers.server && s.headers.server === 'cloudflare') {
                     // need bypass LOL
-                    return url
+                    return raw_url
                 }
-            }
-        } catch (error: any) {
-            if (error.response) {
-                if ((error.response.status === 301 || error.response.status === 302) && (error.response.headers.Location || error.response.headers.location)) {
-                    return error.response.headers.Location || error.response.headers.location
+            } catch (error: any) {
+                console.log(error)
+                if (error.response) {
+                    if (
+                        // (error.response.status === 301 || error.response.status === 302) && 
+                        (error.response.headers.Location || error.response.headers.location)) {
+                        return error.response.headers.Location || error.response.headers.location
+                    } else {
+                        return raw_url
+                    }
+                } else if (retry_time > 1) {
+                    return raw_url
                 } else {
-                    return url
+                    url = await get_redirect(raw_url, retry_time + 1)
                 }
-            } else {
-                return await get_redirect(url, retry_time + 1)
             }
         }
     }
     return url
 }
+
 export async function real_remove_utm(url = ''): Promise<string> {
     try {
         const u = new URL(url)
@@ -168,10 +197,13 @@ export async function real_remove_utm(url = ''): Promise<string> {
     }
     return url
 }
+// export function (have URL matcher, depends <space> and <\n>)
+// need improve
 export default async (text = ''): Promise<string> => {
-    let stext = await Promise.all(text.replaceAll(' ',' ').replaceAll('http', ' http').split('\n').map(async (l) => {
+    let stext = await Promise.all(text.replaceAll(' ', ' ').replaceAll('http', ' http').split('\n').map(async (l) => {
         return (await Promise.all(l.split(' ').map(async (l) => {
             return (await real_remove_utm(l))
+            //                      will force add <space> in http(s)://
         }))).join(' ').replaceAll('  http', ' http').trim()
     }))
     return stext.join('\n')

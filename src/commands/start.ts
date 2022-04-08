@@ -2,6 +2,9 @@ import { bot } from '../bot'
 import { get_real_message } from '../handlers/hide_message'
 
 bot.start(async (ctx) => {
+    let default_extra = {
+        reply_to_message_id: ctx.message.message_id
+    }
     if (ctx.startPayload) {
         let text = ''
         const stext = ctx.startPayload.split('_')
@@ -15,9 +18,13 @@ bot.start(async (ctx) => {
                 break;
         }
         if (text) {
-            ctx.reply(text)
+            await ctx.reply(text, {
+                ...default_extra
+            })
         }
     } else {
-        ctx.reply('Welcome to use rewrite bot')
+        await ctx.reply('Welcome to use rewrite bot', {
+            ...default_extra
+        })
     }
 })

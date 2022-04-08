@@ -21,7 +21,14 @@ bot.launch().then(async () => {
     process.exit()
 })
 
-bot.use((ctx, next) => {
+// bot.use((ctx, next) => {
+//     next()
+// })
+
+// see https://github.com/telegraf/telegraf/issues/1323
+bot.on('channel_post', (ctx, next) => {
+    // @ts-ignore
+    ctx.update.message = ctx.update.channel_post
     next()
 })
 bot.catch(async (err, ctx) => {

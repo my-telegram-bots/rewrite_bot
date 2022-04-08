@@ -41,10 +41,23 @@ bot.on('text', async (ctx, next) => {
     honsole.dev(1, ctx.message.text, JSON.stringify(ctx.message.entities))
     honsole.dev(2, text, JSON.stringify(entities))
     if (ctx.message.text !== text || JSON.stringify(ctx.message.entities) !== JSON.stringify(entities)) {
-      await ctx.reply(text, {
-        entities: entities,
-        reply_to_message_id: ctx.message.message_id,
-      })
+      let reply_flag = true
+      // @ts-ignore
+      if (ctx.update.channel_post) {
+        reply_flag = false
+        await bot.telegram.editMessageText(ctx.senderChat?.id, ctx.message.message_id, undefined, text, {
+          entities: entities
+        }).catch(async e => {
+          // await catchily(e, ctx.senderChat?.id)
+          reply_flag = true
+        })
+      }
+      if (reply_flag) {
+        await ctx.reply(text, {
+          entities: entities,
+          reply_to_message_id: ctx.message.message_id,
+        })
+      }
     }
   }
   next()
