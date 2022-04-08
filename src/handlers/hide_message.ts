@@ -1,12 +1,11 @@
 import { userSetting as TuserSetting } from '@prisma/client'
-import emojiRegex from 'emoji-regex'
 import { Markup } from 'telegraf'
 import { InlineQueryResult, InlineKeyboardButton } from 'typegram'
 import { bot } from '../bot'
 import { prisma } from '../db'
 import { ThideText } from '../schema'
+import { emoji_regex } from './common'
 
-const emoji_regex = emojiRegex()
 /**
  * text to ████ or other char
  * @param text @requires

@@ -1,5 +1,6 @@
 import { bot } from '../bot'
 import { MASTER_ID } from '../config'
+import emojiRegex from 'emoji-regex'
 
 export const honsole = {
     log: (...args: any[]) => {
@@ -19,3 +20,5 @@ export const honsole = {
         console.warn(...args)
     }
 }
+
+export const emoji_regex = emojiRegex()

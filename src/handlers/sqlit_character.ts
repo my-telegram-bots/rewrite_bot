@@ -1,5 +1,4 @@
-import emojiRegex from 'emoji-regex'
-const emoji_regex = emojiRegex()
+import { emoji_regex } from "./common"
 
 export default (text: string = '') => {
     let stext: string = text.split('').join(' ')

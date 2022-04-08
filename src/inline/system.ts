@@ -9,7 +9,7 @@ bot.on('inline_query', async (ctx, next) => {
         let result: InlineQueryResult[] = []
         const command = ctx.inlineQuery.query.substring(3)
         if (parseInt(command) !== NaN) {
-            let d = await prisma.normalMessage.findFirst({
+            let d = await prisma.hideNormalMessage.findFirst({
                 where: {
                     user_id: user_id,
                     message_id: parseInt(command)
