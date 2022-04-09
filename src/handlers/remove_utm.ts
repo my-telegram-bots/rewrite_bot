@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { REDIRECT_CHECK_API } from '../config'
+import { REDIRECT_CHECK_API, USERAGENT } from '../config'
 import { domainPathParamsList, domainPathUrlReplaceList } from '../schema'
 
 // utm_* see wiki https://en.wikipedia.org/wiki/UTM_parameters
@@ -14,12 +14,22 @@ const hostname_utm_params_blacklist: domainPathParamsList = {
     },
     'www.twitter.com': {
         '/': ['t', 's']
+    },
+    // https://open.spotify.com/playlist/37i9dQZF1EIXd6ZHAUAkgq ?si=xxx
+    // https://open.spotify.com/artist/7ucOhItVkxNqunNLo8AkzN ?si=xxx
+    // https://open.spotify.com/track/08hU4ic3BmXofI27o0vNCY ?si=xxx
+    'open.spotify.com': {
+        '/': ['si']
     }
 }
 const hostname_utm_params_whitelist: domainPathParamsList = {
     'www.bilibili.com': {
         //               t=time
         '/video/': ['p', 't']
+    },
+    // space.bilibili.com/:uid
+    'space.bilibili.com': {
+        '/': []
     },
     'item.taobao.com': {
         '/': ['id']
@@ -45,7 +55,10 @@ const hostname_utm_params_whitelist: domainPathParamsList = {
     },
     'mobile.yangkeduo.com': {
         '/goods1.html': ['goods_id']
-    }
+    },
+    // 'open.spotify.com': {
+    //     '/track/': []
+    // }
 }
 // 感觉很侵入性，后面有机会再来优化了 ~~出锅以后再说~~
 const hostname_url_replace: domainPathUrlReplaceList = {
@@ -97,7 +110,7 @@ export async function get_redirect(raw_url = '', retry_time = 0): Promise<string
                     headers: {
                         // maybe need accepted-languages or other fields....
                         // get newest useragent from https://t.me/chrome_useragent
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.40 Safari/537.36'
+                        'User-Agent': USERAGENT
                     }
                 })
                 if (s.headers.Location || s.headers.location) {
