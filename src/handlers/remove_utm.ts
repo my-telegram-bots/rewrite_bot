@@ -118,6 +118,14 @@ export async function get_redirect(raw_url = '', retry_time = 0): Promise<string
                 } else if ((<string>s.data).includes('Checking your browser') && s.headers.server && s.headers.server === 'cloudflare') {
                     // need bypass LOL
                     return raw_url
+                } else if (s.data) {
+                    // if useragent == curl , twitter will return Location headers,
+                    // maybe this parser is useless.
+                    if (s.config.url?.startsWith('https://t.co')) {
+                        let urloffset1 = s.data.indexOf(';URL=')
+                        let urloffset2 = s.data.indexOf('"></noscript><title>')
+                        url = s.data.substring(urloffset1 + 5, urloffset2)
+                    }
                 }
             } catch (error: any) {
                 console.log(error)
@@ -140,13 +148,13 @@ export async function get_redirect(raw_url = '', retry_time = 0): Promise<string
     return url
 }
 
-export async function real_remove_utm(url = ''): Promise<string> {
+export async function real_remove_utm(url = '', url_expanded = false): Promise<string> {
     try {
         const u = new URL(url)
         const uu = u.searchParams
         let hostname: string = u.hostname
-        if (short_url_service_domain.includes(hostname)) {
-            return await real_remove_utm(await get_redirect(url))
+        if (short_url_service_domain.includes(hostname) && !url_expanded) {
+            return await real_remove_utm(await get_redirect(url), true)
         }
         // www = @
         if (hostname.split('.').length === 2) {

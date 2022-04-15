@@ -1,6 +1,6 @@
 import { userSetting } from '.prisma/client'
 
-export function DuserSetting(user_id: | bigint): userSetting {
+export function DuserSetting(user_id: number | bigint): userSetting {
     return {
         // @ts-ignore
         user_id: user_id,
