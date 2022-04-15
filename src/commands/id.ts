@@ -1,4 +1,4 @@
-import { bot } from '../bot';
+import { bot } from '../bot'
 
 bot.command('/id', async (ctx) => {
     let text = ctx.chat.id < 0 ? `#chatid: \`${ctx.chat.id}\`\n` : ''

@@ -84,7 +84,7 @@ export async function get_redirect(raw_url = '', retry_time = 0): Promise<string
     if (retry_time < 5) {
         // detect new url with proxy
         // prevent attack & trace (IP owner is cloudflare)
-        if (!!REDIRECT_CHECK_API) {
+        if (REDIRECT_CHECK_API) {
             try {
                 let s = await axios.get(REDIRECT_CHECK_API + raw_url, {
                     timeout: 3000
@@ -128,7 +128,9 @@ export async function get_redirect(raw_url = '', retry_time = 0): Promise<string
                     }
                 }
             } catch (error: any) {
-                console.log(error)
+                if (process.env.dev) {
+                    console.warn(error)
+                }
                 if (error.response) {
                     if (
                         // (error.response.status === 301 || error.response.status === 302) && 
@@ -148,13 +150,18 @@ export async function get_redirect(raw_url = '', retry_time = 0): Promise<string
     return url
 }
 
-export async function real_remove_utm(url = '', url_expanded = false): Promise<string> {
+export async function real_remove_utm(url = '', url_history: Array<string> = []): Promise<string> {
     try {
         const u = new URL(url)
         const uu = u.searchParams
         let hostname: string = u.hostname
-        if (short_url_service_domain.includes(hostname) && !url_expanded) {
-            return await real_remove_utm(await get_redirect(url), true)
+        if (short_url_service_domain.includes(hostname)) {
+            if (url_history.includes(url)) {
+                return url
+            } else {
+                url_history.push(url)
+            }
+            return await real_remove_utm(await get_redirect(url), url_history)
         }
         // www = @
         if (hostname.split('.').length === 2) {

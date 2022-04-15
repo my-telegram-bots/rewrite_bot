@@ -71,15 +71,19 @@ export async function get_real_message(id: string): Promise<any> {
             id: id
         }
     })
-    if (d?.status === 0) {
-        await prisma.hideMessage.update({
-            where: {
-                id: id
-            },
-            data: {
-                status: 1
-            }
-        })
+    if (d) {
+        if (d?.status === 0) {
+            await prisma.hideMessage.update({
+                where: {
+                    id: id
+                },
+                data: {
+                    status: 1
+                }
+            })
+        }
+        return d?.text
+    } else {
+        return 'message not found'
     }
-    return d?.text
 }

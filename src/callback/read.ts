@@ -5,7 +5,7 @@ bot.on('callback_query', async (ctx, next) => {
     
     // @ts-ignore
     let data = ctx.callbackQuery.data
-    let text = 'error'
+    let text = 'message not found'
     if (data) {
         const sdata = data.split('_')
         // sdata[0]
