@@ -56,6 +56,9 @@ const hostname_utm_params_whitelist: domainPathParamsList = {
     'mobile.yangkeduo.com': {
         '/goods1.html': ['goods_id']
     },
+    'tieba.baidu.com': {
+        '/p/': []
+    }
     // 'open.spotify.com': {
     //     '/track/': []
     // }
