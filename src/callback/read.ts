@@ -21,7 +21,7 @@ bot.on('callback_query', async (ctx, next) => {
     }
     ctx.answerCbQuery(text, {
         show_alert: true,
-        cache_time: 600
+        cache_time: 60
     })
 })
 // I can't test this regex
