@@ -7,6 +7,7 @@ const utm_params = {
     '/': ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid']
 }
 // maybe need wildcard support (match */xxx/)
+// ~~regeX~~
 const hostname_utm_params_blacklist: domainPathParamsList = {
     // www = @
     ['www.bilibili.com']: {
@@ -153,7 +154,8 @@ export async function get_redirect(raw_url = '', retry_time = 0): Promise<string
     return url
 }
 
-export async function real_remove_utm(url = '', url_history: Array<string> = []): Promise<string> {
+export async function real_remove_utm(raw_url = '', url_history: Array<string> = []): Promise<string> {
+    let url = raw_url
     try {
         const u = new URL(url)
         const uu = u.searchParams
@@ -224,7 +226,13 @@ export async function real_remove_utm(url = '', url_history: Array<string> = [])
         url_replace_list.forEach(([u1, u2]) => {
             url = url.replace(u1, u2)
         })
+        // not a good idea
+        let pathname = u.pathname.substring(1)
+        if (!raw_url.includes(pathname)) {
+            url = url.replace(pathname, decodeURIComponent(pathname))
+        }
     } catch (error) {
+
     }
     return url
 }

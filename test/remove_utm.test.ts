@@ -20,3 +20,10 @@ test('[utm] test short link (t.co)', async () => {
   let a = await remove_utm(url)
   expect(a).toBe(result_url)
 })
+
+test('[utm] test keep pathname friendly', async () => {
+  let url = 'https://telegra.ph/长沙居民自建房倒塌事故-参与违规改造两人被刑拘-05-03'
+  let result_url = 'https://telegra.ph/长沙居民自建房倒塌事故-参与违规改造两人被刑拘-05-03'
+  let a = await remove_utm(url)
+  expect(a).toBe(result_url)
+})
