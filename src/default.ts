@@ -9,7 +9,7 @@ export function DuserSetting(user_id: number | bigint): userSetting {
         // 为什么用中文呢，因为也没人看，大概
         hide_mode: 1,
         // single character
-        hide_placeholders: '["█","❔","❓","🍞"]',
+        hide_placeholders: '["█","❔","❓"]',
         expired_time_offset: 0,
         disabled: ''
     }
