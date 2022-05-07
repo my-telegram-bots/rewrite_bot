@@ -189,6 +189,7 @@ export async function real_remove_utm(raw_url = '', url_history: Array<string> =
         if (white_flag) {
             // rm all params
             const wu = new URL(url.replace(u.search, ''))
+            // and add whitelist
             whitelist.forEach((p: string) => {
                 if (uu.get(p)) {
                     wu.searchParams.set(p, <string>uu.get(p))
@@ -230,6 +231,9 @@ export async function real_remove_utm(raw_url = '', url_history: Array<string> =
         let pathname = u.pathname.substring(1)
         if (!raw_url.includes(pathname)) {
             url = url.replace(pathname, decodeURIComponent(pathname))
+        }
+        if (raw_url.lastIndexOf(u.hostname + '/') === -1 && u.pathname === '/') {
+            url = url.replace(u.hostname + '/', u.hostname)
         }
     } catch (error) {
 
