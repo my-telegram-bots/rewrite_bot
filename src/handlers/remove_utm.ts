@@ -240,12 +240,33 @@ export async function real_remove_utm(raw_url = '', url_history: Array<string> =
     }
     return url
 }
+// export const pathname_encodeize = (url: string) => {
+//     return encodeURI(url)
+// }
+
+// export const pathname_decodeize = (url: string) => {
+//     return decodeURIComponent(url)
+// }
+
 // export function (have URL matcher, depends <space> and <\n>)
 // need improve
-export default async (text = ''): Promise<string> => {
+export default async (text = '', type = 1): Promise<string> => {
     let stext = await Promise.all(text.replaceAll(' ', ' ').replaceAll('http', ' http').split('\n').map(async (l) => {
         return (await Promise.all(l.split(' ').map(async (l) => {
-            return (await real_remove_utm(l))
+            switch (type) {
+                case 1:
+                    return (await real_remove_utm(l))
+                    break
+                case 2:
+                    return encodeURI(l)
+                    break
+                case 3:
+                    return decodeURIComponent(l)
+                    break
+                default:
+                    return l
+                    break
+            }
             //                      will force add <space> in http(s)://
         }))).join(' ').replaceAll('  http', ' http').trim()
     }))

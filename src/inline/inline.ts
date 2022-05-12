@@ -15,12 +15,14 @@ bot.on('inline_query', async (ctx) => {
         cache_time: 10
     }
     if (text) {
+        text = await remove_utm(text, 0)
         const u = await d_get_userSetting(ctx.from.id)
         const rm_utm_text = await remove_utm(text)
         const splited_text = sqlit_character(text)
         const md5 = crypto.createHash('md5').update(text).digest('hex').toString()
         const base64_e = Buffer.from(text, 'utf-8').toString('base64')
         const base64_d = Buffer.from(text, 'base64').toString('utf-8')
+        const uri_d = await remove_utm(text, 3)
         if (rm_utm_text !== text) {
             results.push({
                 id: 'rm utm',
@@ -29,6 +31,29 @@ bot.on('inline_query', async (ctx) => {
                 description: rm_utm_text.substring(0, 64),
                 input_message_content: {
                     message_text: rm_utm_text
+                }
+            })
+            const rm_utm_text_decodeURI = await remove_utm(rm_utm_text, 3)
+            if (rm_utm_text !== rm_utm_text_decodeURI) {
+                results.push({
+                    id: 'rm utm with decodeURI',
+                    type: 'article',
+                    title: 'rm utm params with decodeURI',
+                    description: rm_utm_text_decodeURI.substring(0, 64),
+                    input_message_content: {
+                        message_text: rm_utm_text_decodeURI
+                    }
+                })
+            }
+        }
+        if (uri_d !== text) {
+            results.push({
+                id: 'url with decodeURI',
+                type: 'article',
+                title: 'url with decodeURI',
+                description: uri_d.substring(0, 64),
+                input_message_content: {
+                    message_text: uri_d
                 }
             })
         }

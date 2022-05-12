@@ -42,3 +42,10 @@ test('[utm] test keep pathname friendly 3 (pathname only have /)', async () => {
   let a = await remove_utm(url)
   expect(a).toBe(result_url)
 })
+
+test('[utm] test keep pathname friendly 4 (pathname with decodeuri)', async () => {
+  let url = 'https://huggy.moe/テスト?utm_source=website&utm_medium=referral&utm_campaign=last-generation'
+  let result_url = 'https://huggy.moe/テスト'
+  let a = await remove_utm(await remove_utm(url), 3)
+  expect(a).toBe(result_url)
+})
