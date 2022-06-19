@@ -12,6 +12,8 @@ bot.start(async (ctx) => {
         switch (stext[0]) {
             case 'r':
                 text = await get_real_message(stext[1])
+                // @ts-ignore
+                default_extra.protect_content = true
                 break
 
             default:
