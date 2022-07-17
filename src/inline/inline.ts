@@ -23,6 +23,18 @@ bot.on('inline_query', async (ctx) => {
         const base64_e = Buffer.from(text, 'utf-8').toString('base64')
         const base64_d = Buffer.from(text, 'base64').toString('utf-8')
         const uri_d = await remove_utm(text, 3)
+        if(rm_utm_text.includes('https://twitter.com/')){
+            const vxtwitter_text = rm_utm_text.replaceAll('https://twitter.com/','https://vxtwitter.com/')
+            results.push({
+                id: 'vxtwitter link',
+                type: 'article',
+                title: 'send as vxtwitter (fix preview)',
+                description: vxtwitter_text.substring(0, 64),
+                input_message_content: {
+                    message_text: vxtwitter_text
+                }
+            })
+        }
         if (rm_utm_text !== text) {
             results.push({
                 id: 'rm utm',
