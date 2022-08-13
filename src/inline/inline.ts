@@ -27,18 +27,32 @@ bot.on('inline_query', async (ctx) => {
             const vxtwitter_text1 = rm_utm_text.replaceAll('https://twitter.com/', '\u200Chttps://twitter.com/')
             const vxtwitter_text2 = rm_utm_text.replaceAll('https://twitter.com/', 'https://vxtwitter.com/')
             let vxtwitter_entity: MessageEntity[] = []
-            let temp_vxtwitter_text1 = ''
             // \u200C is a zero-width space
             // https://github.com/grammyjs/stateless-question/blob/d304caa4d8ebbaa1c2aca431e95f1a09ddb772f2/source/identifier.ts#L5
+            let vxhiddentext_offset = 0
             vxtwitter_text1.split('\u200C').forEach((url, index) => {
                 if (url.startsWith('https://twitter.com/')) {
                     vxtwitter_entity.push({
                         type: 'text_link',
-                        offset: index === 1 ? 0 : temp_vxtwitter_text1.length + index,
-                        url: url.replace('twitter','vxtwitter'),
+                        offset: vxhiddentext_offset,
+                        url: url.replace('twitter', 'vxtwitter'),
                         length: 1
                     })
-                    temp_vxtwitter_text1 += '\u200C' + url
+                }
+                vxhiddentext_offset += url.length
+            })
+            results.push({
+                id: 'vxtwitter link 0',
+                type: 'article',
+                title: 'send as vxtwitter 0 (combined images and show with original link)',
+                description: vxtwitter_text1.substring(0, 64),
+                input_message_content: {
+                    message_text: vxtwitter_text1,
+                    entities: vxtwitter_entity.map(e => {
+                        // @ts-ignore
+                        e.url = e.url.replace('vxtwitter', 'c.vxtwitter').split('/photo')[0]
+                        return e
+                    })
                 }
             })
             results.push({
