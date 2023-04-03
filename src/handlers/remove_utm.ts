@@ -10,8 +10,11 @@ const utm_params = {
 // ~~regeX~~
 const hostname_utm_params_blacklist: domainPathParamsList = {
     // www = @
-    ['www.bilibili.com']: {
-        '/': ['share_medium', 'share_plat', 'share_session_id', 'share_source', 'share_tag', 'timestamp', 'unique_k']
+    'www.bilibili.com': {
+        '/': ['share_medium', 'share_plat', 'share_session_id', 'share_source', 'share_tag', 'timestamp', 'unique_k', 'plat_id', 'share_from']
+    },
+    'm.bilibili.com': {
+        '/': ['share_medium', 'share_plat', 'share_session_id', 'share_source', 'share_tag', 'timestamp', 'unique_k', 'plat_id', 'share_from']
     },
     'www.twitter.com': {
         '/': ['t', 's']
@@ -26,11 +29,16 @@ const hostname_utm_params_blacklist: domainPathParamsList = {
 const hostname_utm_params_whitelist: domainPathParamsList = {
     'www.bilibili.com': {
         //               t=time
-        '/video/': ['p', 't']
+        '/video/': ['p', 't'],
+        // '/read/mobile/': [],
+        '/read/': []
     },
     // space.bilibili.com/:uid
     'space.bilibili.com': {
         '/': []
+    },
+    'm.bilibili.com': {
+        '/dynamic/': []
     },
     'item.taobao.com': {
         '/': ['id']
@@ -41,6 +49,9 @@ const hostname_utm_params_whitelist: domainPathParamsList = {
     },
     'detail.tmall.com': {
         '/': ['id']
+    },
+    'h5.m.goofish.com': {
+        '/item': ['id']
     },
     'm.weibo.cn': {
         '/status': []
@@ -73,7 +84,7 @@ const hostname_url_replace: domainPathUrlReplaceList = {
         '/': [['mobile.', '']]
     }
 }
-const short_url_service_domain = ['g.co', 'aka.ms', 'amazon.to', 't.co', 'u.nu', 'bit.ly', 'tinyurl.com', 'b23.tv', 'aka.ms', 't.cn']
+const short_url_service_domain = ['g.co', 'aka.ms', 'amazon.to', 't.co', 'u.nu', 'bit.ly', 'tinyurl.com', 'b23.tv', 'aka.ms', 't.cn','m.tb.cn']
 
 
 /**
@@ -129,6 +140,8 @@ export async function get_redirect(raw_url = '', retry_time = 0): Promise<string
                         let urloffset1 = s.data.indexOf(';URL=')
                         let urloffset2 = s.data.indexOf('"></noscript><title>')
                         url = s.data.substring(urloffset1 + 5, urloffset2)
+                    } else if (s.config.url?.startsWith('https://m.tb.cn')) {
+                        url = s.data.split('var url = \'')[1].split('\';')[0]
                     }
                 }
             } catch (error: any) {
