@@ -17,7 +17,8 @@ bot.on('inline_query', async (ctx) => {
     if (text) {
         text = await remove_utm(text, 0)
         const u = await d_get_userSetting(ctx.from.id)
-        const rm_utm_text = await remove_utm(text)
+        // replace hardly but work....
+        const rm_utm_text = (await remove_utm(text)).replace('https://x.com', 'https://twitter.com')
         const splited_text = sqlit_character(text)
         const md5 = crypto.createHash('md5').update(text).digest('hex').toString()
         const base64_e = Buffer.from(text, 'utf-8').toString('base64')
@@ -40,6 +41,20 @@ bot.on('inline_query', async (ctx) => {
                     })
                 }
                 vxhiddentext_offset += url.length
+            })
+            results.push({
+                id: 'fxtwitter link 0',
+                type: 'article',
+                title: 'send as fxtwitter 0 (with telegraph)',
+                description: vxtwitter_text1.substring(0, 64),
+                input_message_content: {
+                    message_text: vxtwitter_text1,
+                    entities: vxtwitter_entity.map(e => {
+                        // @ts-ignore
+                        e.url = e.url.replace('vxtwitter', 'fxtwitter').split('/photo')[0]
+                        return e
+                    })
+                }
             })
             results.push({
                 id: 'vxtwitter link 0',
