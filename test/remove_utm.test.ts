@@ -24,6 +24,13 @@ test('[utm] test b23.tv test3 (cv dynamic)', async () => {
   expect(a).toBe(result_url)
 })
 
+test('[utm] remove youtube ?si', async () => {
+  let url = 'https://youtu.be/QdBZY2fkU-0?si=YnsiWWVaavvys-kk'
+  let result_url = 'https://youtu.be/QdBZY2fkU-0'
+  let a = await remove_utm(await remove_utm(url), 3)
+  expect(a).toBe(result_url)
+})
+
 test('[utm] test y.music.163.com', async () => {
   let url = '分享114的单曲《(Live)》: https://y.music.163.com/m/song?id=1&userid=114514 (来自@网易云音乐)'
   let result_url = '分享114的单曲《(Live)》: https://y.music.163.com/m/song?id=1 (来自@网易云音乐)'
@@ -78,4 +85,3 @@ test('[utm] test keep pathname friendly 4 (pathname with decodeuri)', async () =
   let a = await remove_utm(await remove_utm(url), 3)
   expect(a).toBe(result_url)
 })
-

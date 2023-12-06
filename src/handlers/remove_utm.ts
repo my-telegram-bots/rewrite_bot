@@ -24,6 +24,12 @@ const hostname_utm_params_blacklist: domainPathParamsList = {
     // https://open.spotify.com/track/08hU4ic3BmXofI27o0vNCY ?si=xxx
     'open.spotify.com': {
         '/': ['si']
+    },
+    'www.youtu.be': {
+        '/': ['si']
+    },
+    'www.youtube.com': {
+        '/': ['si']
     }
 }
 const hostname_utm_params_whitelist: domainPathParamsList = {
@@ -84,7 +90,7 @@ const hostname_url_replace: domainPathUrlReplaceList = {
         '/': [['mobile.', '']]
     }
 }
-const short_url_service_domain = ['g.co', 'aka.ms', 'amazon.to', 't.co', 'u.nu', 'bit.ly', 'tinyurl.com', 'b23.tv', 'aka.ms', 't.cn','m.tb.cn']
+const short_url_service_domain = ['g.co', 'aka.ms', 'amazon.to', 't.co', 'u.nu', 'bit.ly', 'tinyurl.com', 'b23.tv', 'aka.ms', 't.cn', 'm.tb.cn']
 
 
 /**
