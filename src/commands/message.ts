@@ -52,8 +52,10 @@ bot.on('text', async (ctx, next) => {
         })
       } else {
         reply_flag = true
-        // await 
-        bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => { })
+        if (ctx.chat.id < 0) {
+          // await 
+          bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => { })
+        }
       }
       if (reply_flag) {
         await ctx.reply(text, {

@@ -26,10 +26,10 @@ const hostname_utm_params_blacklist: domainPathParamsList = {
         '/': ['si']
     },
     'www.youtu.be': {
-        '/': ['si']
+        '/': ['si', 'feature']
     },
     'www.youtube.com': {
-        '/': ['si']
+        '/': ['si', 'feature']
     }
 }
 const hostname_utm_params_whitelist: domainPathParamsList = {
@@ -76,6 +76,9 @@ const hostname_utm_params_whitelist: domainPathParamsList = {
     },
     'tieba.baidu.com': {
         '/p/': []
+    },
+    'jp.mercari.com': {
+        '/item/': []
     }
     // 'open.spotify.com': {
     //     '/track/': []
