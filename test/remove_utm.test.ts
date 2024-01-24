@@ -38,6 +38,13 @@ test('[utm] test y.music.163.com', async () => {
   expect(a).toBe(result_url)
 })
 
+test('[utm] test instagram.com', async () => {
+  let url = 'https://www.instagram.com/reel/egrtnjytmytnrt/?igsh=awfegrefscvdfb'
+  let result_url = 'https://www.instagram.com/reel/egrtnjytmytnrt/'
+  let a = await remove_utm(url)
+  expect(a).toBe(result_url)
+})
+
 test('[utm] test short link (t.co)', async () => {
   let url = 'https://t.co/B4Gh4qp4Jm'
   let result_url = 'https://cn.yna.co.kr/view/ACK20220414005800881?input=tw'

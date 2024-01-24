@@ -4,7 +4,7 @@ import { domainPathParamsList, domainPathUrlReplaceList } from '../schema'
 
 // utm_* see wiki https://en.wikipedia.org/wiki/UTM_parameters
 const utm_params = {
-    '/': ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid']
+    '/': ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid', 'igsh']
 }
 // maybe need wildcard support (match */xxx/)
 // ~~regeX~~
@@ -79,7 +79,11 @@ const hostname_utm_params_whitelist: domainPathParamsList = {
     },
     'jp.mercari.com': {
         '/item/': []
-    }
+    },
+    'www.xiaohongshu.com': {
+        '/explore/': [],
+        '/discovery/item/': []
+    },
     // 'open.spotify.com': {
     //     '/track/': []
     // }
