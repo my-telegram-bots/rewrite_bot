@@ -1,0 +1,46 @@
+[Unit]
+Description=rewrite_bot Telegram bot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/data/bot/rewrite_bot
+EnvironmentFile=/data/bot/rewrite_bot/.env
+Environment=NODE_ENV=production
+DynamicUser=true
+User=rewrite-bot
+Group=rewrite-bot
+StateDirectory=rewrite-bot
+StateDirectoryMode=0700
+
+# On the first start only, preserve the stopped Prisma database as the state
+# database. This runs as the dynamic user; StateDirectory is already writable
+# and no transient username lookup or privileged ownership transfer is needed.
+ExecStartPre=/bin/sh -ec "trap 'rm -f /var/lib/rewrite-bot/.legacy-import.tmp' EXIT INT TERM; rm -f /var/lib/rewrite-bot/.legacy-import.tmp; if test ! -e /var/lib/rewrite-bot/rewrite_bot.db && test -e /data/bot/rewrite_bot/prisma/dev.db; then install -m 0600 /data/bot/rewrite_bot/prisma/dev.db /var/lib/rewrite-bot/.legacy-import.tmp; mv /var/lib/rewrite-bot/.legacy-import.tmp /var/lib/rewrite-bot/rewrite_bot.db; fi"
+
+# Refuse startup if the explicit migration or its post-check fails. Pinning
+# DATABASE_PATH here prevents an obsolete value in .env from selecting a new
+# or repository-local database.
+ExecStartPre=/usr/bin/env DATABASE_PATH=/var/lib/rewrite-bot/rewrite_bot.db node dist/src/db/cli-migrate.js
+ExecStartPre=/usr/bin/env DATABASE_PATH=/var/lib/rewrite-bot/rewrite_bot.db node dist/src/db/cli-check.js
+ExecStart=/usr/bin/env DATABASE_PATH=/var/lib/rewrite-bot/rewrite_bot.db node dist/src/app.js
+
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+KillSignal=SIGTERM
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

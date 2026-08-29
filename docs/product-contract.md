@@ -8,6 +8,7 @@ This document is the release contract for the SQLite and URL-cleaning migration.
 - Prisma, generated clients, legacy runtime readers, dual reads, and dual writes are forbidden.
 - Telegram user and chat identifiers are decimal `TEXT`; JavaScript number coercion is forbidden at the persistence boundary.
 - Schema changes run only through the explicit `db:migrate` command. Application startup checks the migration version and never changes schema.
+- The shipped systemd unit uses `DynamicUser`, keeps SQLite and its backups in `StateDirectory=rewrite-bot`, imports the stopped legacy Prisma database as that same dynamic user on the first start, loads only secrets from the operator environment file, runs the compiled migration and database check as explicit `ExecStartPre` steps, and starts only the compiled `dist/src/app.js` entry point.
 - Migration of an existing database starts with `integrity_check`, creates a non-overwriting consistent backup, and copies all three legacy Prisma tables in one transaction. Row counts and normalized placeholder counts are checked before legacy tables are removed. A failed migration rolls back and prevents startup.
 - User settings, normalized hide placeholders, chat settings, hidden inline messages, and hidden normal messages survive process restarts.
 
@@ -17,7 +18,7 @@ This document is the release contract for the SQLite and URL-cleaning migration.
 - User-facing text is resolved through the official grammY i18n plugin and Fluent locale resources. English and Simplified Chinese resources remain key-for-key synchronized; handlers do not hard-code translatable UI text.
 - `/settings` in a private chat edits the caller's user settings. In a group it shows chat settings; every callback that changes group state re-checks administrator status. Non-admin members may view but not mutate.
 - The panel has stable text slots and keyboard rows and refreshes by editing the original message.
-- Normal tracking cleanup defaults on. Referral-marketing removal and network short-link expansion default off.
+- Normal tracking cleanup and network short-link expansion default on for imported legacy users and newly created user or group settings. Referral-marketing removal defaults off. Upgrading an existing canonical setting preserves its explicitly stored short-link choice.
 - Group mode defaults to `replace`: the original is deleted and the bot republishes the cleaned content, so the visible sender becomes the bot. If deletion is unavailable, the original is retained and the bot replies with the cleaned content plus a human-readable permission explanation.
 - Group modes are `replace`, `reply`, and `off`.
 

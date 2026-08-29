@@ -7,7 +7,7 @@ export function copyAssets(): void {
 
   const destination = resolve('dist/src/db/migrations')
   mkdirSync(destination, { recursive: true })
-  cpSync(resolve('src/db/migrations/001_canonical_schema.sql'), resolve(destination, '001_canonical_schema.sql'))
+  cpSync(resolve('src/db/migrations'), destination, { recursive: true })
   cpSync(resolve('locales'), resolve('dist/locales'), { recursive: true })
 }
 

@@ -24,6 +24,34 @@ yarn start
 
 Application startup checks the expected migration version and refuses to start when the explicit migration has not run. It never changes the schema automatically.
 
+### systemd deployment
+
+The release includes `deploy/rewrite-bot.service` for installations rooted at `/data/bot/rewrite_bot`. It uses a systemd dynamic user, stores the live database and non-overwriting migration backups below `/var/lib/rewrite-bot`, reads secrets from `/data/bot/rewrite_bot/.env`, runs the compiled migration and database check as mandatory pre-start steps, and then starts `dist/src/app.js`.
+
+For an existing Prisma deployment, the old `DATABASE_URL="file:./dev.db"` resolved to `/data/bot/rewrite_bot/prisma/dev.db`. On the first service start, the unit atomically copies that stopped database into its state directory, assigns it to the dynamic user, and migrates the copy. The source database remains untouched. `.env` only needs the secrets:
+
+```dotenv
+BOT_TOKEN=replace-with-the-existing-token
+MASTER_ID=replace-with-the-existing-owner-id
+```
+
+Install and switch from PM2:
+
+```sh
+cd /data/bot/rewrite_bot
+yarn install --frozen-lockfile
+yarn build
+
+pm2 stop rewrite-bot
+install -m 0644 deploy/rewrite-bot.service /etc/systemd/system/rewrite-bot.service
+systemctl daemon-reload
+systemctl enable --now rewrite-bot.service
+systemctl status rewrite-bot.service --no-pager
+journalctl -u rewrite-bot.service -n 100 --no-pager
+```
+
+Only after the systemd service is confirmed healthy should the stopped PM2 process definition be removed and saved. The first migration creates a non-overwriting backup beside `/var/lib/rewrite-bot/rewrite_bot.db` before changing the copied legacy schema.
+
 ## Settings
 
 Run `/settings` in a private chat to manage personal cleanup, allowlisted short-link expansion, referral cleanup, and hidden-message presentation. Run it in a group to view group settings. Every group callback rechecks Telegram administrator status; ordinary members can view but cannot change settings.
@@ -52,7 +80,7 @@ Never overwrite or delete a backup until the migrated bot has passed real Telegr
 
 ## URL-cleaning security and privacy
 
-Ordinary cleanup is local. Referral marketing removal and network short-link expansion default off. Network expansion only accepts explicit source domains, follows at most five redirects, caps responses at 64 KiB, times out, rejects credentials and non-HTTP(S) schemes, and pins each connection to DNS results verified as public addresses.
+Ordinary cleanup and allowlisted network short-link expansion default on. Referral marketing removal defaults off. Network expansion only accepts explicit source domains, follows at most five redirects, caps responses at 64 KiB, times out, rejects credentials and non-HTTP(S) schemes, and pins each connection to DNS results verified as public addresses.
 
 The exact allowlist includes common generic services (for example Bitly, TinyURL, is.gd, v.gd, ow.ly, and LinkedIn), platform share hosts (YouTube, Google Maps, TikTok, Spotify, SoundCloud, Reddit, and others), and common Chinese/Japanese commerce or social hosts (Bilibili, Taobao, Douyin, Kuaishou, Xiaohongshu, JD, and Amazon). It never uses wildcard or suffix matching.
 

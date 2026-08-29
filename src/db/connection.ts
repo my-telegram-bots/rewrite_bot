@@ -2,7 +2,7 @@ import Database from 'better-sqlite3'
 import { existsSync } from 'fs'
 import { resolve } from 'path'
 
-export const LATEST_SCHEMA_VERSION = 1
+export const LATEST_SCHEMA_VERSION = 2
 
 export function databasePath(): string {
   return resolve(process.env.DATABASE_PATH || './data/rewrite_bot.db')

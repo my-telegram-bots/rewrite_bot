@@ -4,7 +4,10 @@ import { dirname, join } from 'path'
 import { assertDatabaseCurrent, checkDatabase, LATEST_SCHEMA_VERSION, openDatabase } from './connection'
 import { DEFAULT_HIDE_PLACEHOLDERS } from './types'
 
-const migrationSql = readFileSync(join(__dirname, 'migrations', '001_canonical_schema.sql'), 'utf8')
+const migrationSql = new Map([
+  [1, readFileSync(join(__dirname, 'migrations', '001_canonical_schema.sql'), 'utf8')],
+  [2, readFileSync(join(__dirname, 'migrations', '002_short_links_default_on.sql'), 'utf8')],
+])
 const LEGACY_TABLES = ['hideMessage', 'hideNormalMessage', 'userSetting'] as const
 
 export interface MigrationResult {
@@ -61,14 +64,14 @@ function copyLegacyData(db: Database.Database): void {
     INSERT INTO hidden_normal_messages (id, user_id, message_id, message_type, text, time)
     SELECT id, CAST(user_id AS TEXT), CAST(message_id AS TEXT), message_type, text, time FROM hideNormalMessage;
 
-    INSERT INTO user_settings (user_id, hide_mode, hide_disabled, expired_time_offset)
-    SELECT CAST(user_id AS TEXT), hide_mode, disabled, expired_time_offset FROM userSetting;
+    INSERT INTO user_settings (user_id, expand_short_urls, hide_mode, hide_disabled, expired_time_offset)
+    SELECT CAST(user_id AS TEXT), 1, hide_mode, disabled, expired_time_offset FROM userSetting;
 
-    INSERT OR IGNORE INTO user_settings (user_id)
-    SELECT CAST(user_id AS TEXT) FROM hideMessage;
+    INSERT OR IGNORE INTO user_settings (user_id, expand_short_urls)
+    SELECT CAST(user_id AS TEXT), 1 FROM hideMessage;
 
-    INSERT OR IGNORE INTO user_settings (user_id)
-    SELECT CAST(user_id AS TEXT) FROM hideNormalMessage;
+    INSERT OR IGNORE INTO user_settings (user_id, expand_short_urls)
+    SELECT CAST(user_id AS TEXT), 1 FROM hideNormalMessage;
   `)
 
   const legacySettings = db.prepare(
@@ -129,7 +132,7 @@ export async function migrateDatabase(path: string): Promise<MigrationResult> {
       assertDatabaseCurrent(db)
       return { migrated: false, version }
     }
-    if (version !== undefined) {
+    if (version !== undefined && (version < 1 || version > LATEST_SCHEMA_VERSION)) {
       throw new Error(`Unsupported schema migration path from version ${version}`)
     }
 
@@ -145,13 +148,25 @@ export async function migrateDatabase(path: string): Promise<MigrationResult> {
     }
 
     const migrate = db.transaction(() => {
-      db.exec(migrationSql)
-      if (presentLegacyTables.length === LEGACY_TABLES.length) copyLegacyData(db)
-      db.prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)').run(
-        LATEST_SCHEMA_VERSION,
-        'canonical_sqlite_v1',
-        new Date().toISOString(),
-      )
+      let appliedVersion = version ?? 0
+      if (appliedVersion === 0) {
+        db.exec(migrationSql.get(1) as string)
+        if (presentLegacyTables.length === LEGACY_TABLES.length) copyLegacyData(db)
+        db.prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)').run(
+          1,
+          'canonical_sqlite_v1',
+          new Date().toISOString(),
+        )
+        appliedVersion = 1
+      }
+      if (appliedVersion === 1) {
+        db.exec(migrationSql.get(2) as string)
+        db.prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)').run(
+          2,
+          'short_links_default_on',
+          new Date().toISOString(),
+        )
+      }
       checkDatabase(db)
     })
     migrate()
