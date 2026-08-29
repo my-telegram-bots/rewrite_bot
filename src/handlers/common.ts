@@ -1,6 +1,9 @@
-import { bot } from '../bot'
-import { MASTER_ID } from '../config'
 import emojiRegex from 'emoji-regex'
+
+export function safeLogValue(value: unknown): string {
+    const rendered = value instanceof Error ? `${value.name}: ${value.message}` : String(value)
+    return rendered.replace(/https?:\/\/\S+/giu, '[URL_REDACTED]')
+}
 
 export const honsole = {
     log: (...args: any[]) => {
@@ -12,12 +15,10 @@ export const honsole = {
         }
     },
     error: (...args: any[]) => {
-        bot.telegram.sendMessage(MASTER_ID, `[error] ${args.join(' ')}`)
-        console.error(...args)
+        console.error(...args.map(safeLogValue))
     },
     warn: (...args: any[]) => {
-        bot.telegram.sendMessage(MASTER_ID, `[warn] ${args.join(' ')}`)
-        console.warn(...args)
+        console.warn(...args.map(safeLogValue))
     }
 }
 

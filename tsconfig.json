@@ -8,9 +8,14 @@
       "dom"
     ],
     "esModuleInterop": true,
-    "downlevelIteration": true
+    "downlevelIteration": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "resolveJsonModule": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "scripts/**/*"
   ]
 }

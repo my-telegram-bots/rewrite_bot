@@ -1,10 +1,14 @@
-import { userSetting as TuserSetting } from '@prisma/client'
-import { Markup } from 'telegraf'
-import { InlineQueryResult, InlineKeyboardButton } from 'typegram'
+import type { InlineQueryResult, InlineKeyboardButton } from 'grammy/types'
 import { bot } from '../bot'
-import { prisma } from '../db'
-import { ThideText } from '../schema'
+import { dbRepositories, UserSettings } from '../db'
 import { emoji_regex } from './common'
+import { Translator } from '../context'
+
+interface HideText {
+  text: string
+  mode: 'inline' | 'message'
+  type: number
+}
 
 /**
  * text to ████ or other char
@@ -13,9 +17,8 @@ import { emoji_regex } from './common'
  * @returns text
  */
 export function placeholdeize(text: string, placeholder = '█', mode = 1) {
-    for (const match of text.matchAll(emoji_regex)) {
-        text = text.replace(match[0], 'h')
-    }
+    if (mode === 2) return placeholder
+    text = text.replace(emoji_regex, 'h')
     return text.split('').map((c) => {
         return [' ', '\n'].includes(c) ? c : placeholder
     }).join('')
@@ -24,27 +27,25 @@ export function placeholdeize(text: string, placeholder = '█', mode = 1) {
 /**
  * hide message by text
  */
-export async function hide_message(m: ThideText, u: TuserSetting): Promise<InlineQueryResult[]> {
-    let d = await prisma.hideMessage.create({
-        data: {
-            user_id: u.user_id,
-            text: m.text,
-            time: Math.floor(+new Date() / 1000),
-            status: 0
-        }
+export async function hide_message(m: HideText, u: UserSettings, t: Translator): Promise<InlineQueryResult[]> {
+    const d = dbRepositories().createHiddenMessage({
+        userId: u.userId,
+        text: m.text,
+        time: Math.floor(Date.now() / 1000),
+        status: 0,
+        expiredTime: u.expiredTimeOffset > 0 ? Math.floor(Date.now() / 1000) + u.expiredTimeOffset : 0,
     })
-    // sqlite and sqlserver dont't support JSON directly
-    return JSON.parse(u.hide_placeholders).map((h: string, id: number) => {
-        let ptext = placeholdeize(m.text, h, u.hide_mode)
+    return u.hidePlaceholders.map((h: string, id: number) => {
+        const ptext = placeholdeize(m.text, h, u.hideMode)
         // let button = Markup.button.callback('Read', `r_${d.id}`)
         let button: InlineKeyboardButton = {
-            text: 'Read',
+            text: t('read-button'),
             callback_data: `r_${d.id}`
         }
         if (m.text.length > 199) {
             button = {
-                text: 'Read',
-                url: `https://t.me/${bot.botInfo?.username}?start=${encodeURIComponent(`r_${d.id}`)}`,
+                text: t('read-button'),
+                url: `https://t.me/${bot.botInfo.username}?start=${encodeURIComponent(`r_${d.id}`)}`,
             }
         }
         return <InlineQueryResult>{
@@ -57,33 +58,16 @@ export async function hide_message(m: ThideText, u: TuserSetting): Promise<Inlin
                 message_text: ptext
             },
             reply_markup: {
-                inline_keyboard: Markup.inlineKeyboard([
-                    button
-                ]).reply_markup.inline_keyboard
+                inline_keyboard: [[button]]
             }
         }
     })
 }
 
-export async function get_real_message(id: string): Promise<any> {
-    let d = await prisma.hideMessage.findFirst({
-        where: {
-            id: id
-        }
-    })
-    if (d) {
-        if (d?.status === 0) {
-            await prisma.hideMessage.update({
-                where: {
-                    id: id
-                },
-                data: {
-                    status: 1
-                }
-            })
-        }
-        return d?.text
-    } else {
-        return 'message not found'
-    }
+export async function get_real_message(id: string, t: Translator): Promise<string> {
+    const result = dbRepositories().consumeHiddenMessage(id)
+    if (result.state === 'ok') return result.message.text
+    if (result.state === 'expired') return t('message-expired')
+    if (result.state === 'exhausted') return t('message-exhausted')
+    return t('message-not-found')
 }

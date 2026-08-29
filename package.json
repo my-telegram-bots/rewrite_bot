@@ -6,26 +6,30 @@
   "author": "huggy",
   "scripts": {
     "dev": "ts-node ./src/app.ts",
-    "build": "tsc",
+    "build": "tsc && node dist/scripts/copy-assets.js",
     "start": "node dist/app.js",
-    "test": "jest"
+    "test": "jest --runInBand",
+    "db:migrate": "ts-node ./src/db/cli-migrate.ts",
+    "db:check": "ts-node ./src/db/cli-check.ts",
+    "rules:check": "ts-node ./scripts/check-rules.ts"
   },
-  "prisma": {
-    "seed": "ts-node ./prisma/seed.ts"
+  "engines": {
+    "node": ">=22"
   },
   "dependencies": {
-    "@prisma/client": "^3.12.0",
-    "axios": "^0.26.1",
+    "@grammyjs/i18n": "^1.1.2",
+    "better-sqlite3": "^12.2.0",
     "emoji-regex": "^10.0.1",
-    "telegraf": "^4.7.0"
+    "grammy": "^1.38.3"
   },
   "devDependencies": {
-    "@types/jest": "^27.4.1",
-    "@types/node": "^17.0.23",
-    "jest": "^27.5.1",
-    "prisma": "^3.12.0",
-    "ts-jest": "^27.1.4",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.15.0",
+    "@types/node-fetch": "^2.6.12",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.1",
     "ts-node": "^10.7.0",
-    "typescript": "^4.6.3"
+    "typescript": "^5.9.2"
   }
 }

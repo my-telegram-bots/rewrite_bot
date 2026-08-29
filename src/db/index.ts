@@ -1,14 +1,29 @@
-import { PrismaClient, userSetting as TuserSetting } from '@prisma/client'
-import { DuserSetting } from '../default'
+import Database from 'better-sqlite3'
+import { assertDatabaseCurrent, openDatabase } from './connection'
+import { Repositories } from './repositories'
 
-export const prisma = new PrismaClient()
+let connection: Database.Database | undefined
+let repositories: Repositories | undefined
 
-// get usersetting 
-export const d_get_userSetting = async (user_id: bigint | number) => {
-    const userSetting = (await prisma.userSetting.findFirst({
-        where: {
-            user_id: user_id
-        }
-    })) || DuserSetting(user_id)
-    return userSetting
+export function initializeDatabase(): Repositories {
+  if (!connection) {
+    connection = openDatabase(undefined, true)
+    assertDatabaseCurrent(connection)
+    repositories = new Repositories(connection)
+  }
+  return repositories as Repositories
 }
+
+export function dbRepositories(): Repositories {
+  return repositories || initializeDatabase()
+}
+
+export function closeDatabase(): void {
+  connection?.close()
+  connection = undefined
+  repositories = undefined
+}
+
+export * from './connection'
+export * from './repositories'
+export * from './types'

@@ -1,19 +1,15 @@
 import { bot } from '../bot'
 import { get_real_message } from '../handlers/hide_message'
 
-bot.start(async (ctx) => {
-    let default_extra = {
-        reply_to_message_id: ctx.message.message_id
-    }
-    if (ctx.startPayload) {
+bot.command('start', async (ctx) => {
+    const payload = typeof ctx.match === 'string' ? ctx.match : ''
+    if (payload) {
         let text = ''
-        const stext = ctx.startPayload.split('_')
+        const stext = payload.split('_')
         // sdata[0]
         switch (stext[0]) {
             case 'r':
-                text = await get_real_message(stext[1])
-                // @ts-ignore
-                default_extra.protect_content = true
+                text = await get_real_message(stext[1], ctx.t)
                 break
 
             default:
@@ -21,12 +17,13 @@ bot.start(async (ctx) => {
         }
         if (text) {
             await ctx.reply(text, {
-                ...default_extra
+                reply_parameters: { message_id: ctx.msg.message_id },
+                protect_content: true,
             })
         }
     } else {
-        await ctx.reply('Welcome to use rewrite bot', {
-            ...default_extra
+        await ctx.reply(ctx.t('start'), {
+            reply_parameters: { message_id: ctx.msg.message_id },
         })
     }
 })

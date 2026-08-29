@@ -1,70 +1,44 @@
-import { MessageEntity } from 'telegraf/typings/core/types/typegram';
+import type { Message, MessageEntity } from 'grammy/types'
 import { bot } from '../bot';
-import { honsole } from '../handlers/common';
-import { real_remove_utm } from '../handlers/remove_utm';
+import { ChatMode, dbRepositories } from '../db'
+import { cleanTelegramEntities, expandShortUrl } from '../url'
+import { Translator } from '../context'
+import { deliverCleanedMessage, DeliveryApi, shouldCleanMessage } from '../telegram/delivery'
 
-bot.on('text', async (ctx, next) => {
-  let text = ctx.message.text
-  if (ctx.message.entities && ctx.message.entities.length > 0) {
-    let new_offset_list: number[] = []
-    let new_length_list: number[] = []
-    let entities: MessageEntity[] = [
-      ...ctx.message.entities
-    ]
-    await Promise.all(entities.map(async (e: MessageEntity, i) => {
-      e = { ...e }
-      let offset = e.offset
-      let length = e.length
-      // @ts-ignore
-      if (e.url) {
-        // @ts-ignore
-        e.url = await real_remove_utm(e.url)
-      }
-      // remove utm url in url will shorten the length and next offset need to be recalculated
-      if (e.type === 'url') {
-        let raw_url = ctx.message.text.substring(e.offset, e.offset + e.length)
-        let rm_utm_url = await real_remove_utm(raw_url)
-        text = text.replace(raw_url, rm_utm_url)
-        length = rm_utm_url.length
-      }
-      new_offset_list[i] = offset
-      new_length_list[i] = length
-      entities[i] = e
-    }))
-    let lengthoffset = 0
-    entities.forEach((e: MessageEntity, i) => {
-      entities[i].length = new_length_list[i]
-      entities[i].offset = new_offset_list[i] - lengthoffset
-      // @ts-ignore
-      lengthoffset += ctx.message.entities[i].length - new_length_list[i]
-    })
-    honsole.dev(1, ctx.message.text, JSON.stringify(ctx.message.entities))
-    honsole.dev(2, text, JSON.stringify(entities))
-    if (ctx.message.text !== text || JSON.stringify(ctx.message.entities) !== JSON.stringify(entities)) {
-      let reply_flag = false
-      // @ts-ignore
-      if (ctx.update.channel_post) {
-        await bot.telegram.editMessageText(ctx.senderChat?.id, ctx.message.message_id, undefined, text, {
-          entities: entities
-        }).catch(async e => {
-          // await catchily(e, ctx.senderChat?.id)
-          reply_flag = true
-        })
-      } else {
-        reply_flag = true
-        if (ctx.chat.id < 0) {
-          // await 
-          bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => { })
-        }
-      }
-      if (reply_flag) {
-        await ctx.reply(text, {
-          entities: entities,
-          reply_to_message_id: ctx.message.message_id,
-          allow_sending_without_reply: true
-        })
-      }
-    }
-  }
-  next()
+async function handleTextMessage(
+  api: DeliveryApi,
+  chatId: number,
+  message: Message.TextMessage,
+  t: Translator,
+  privateUserId?: number,
+): Promise<void> {
+  const isPrivate = privateUserId !== undefined
+  const userSettings = isPrivate ? dbRepositories().getOrCreateUserSettings(privateUserId) : undefined
+  const chatSettings = isPrivate ? undefined : dbRepositories().getOrCreateChatSettings(chatId)
+  const settings = userSettings || chatSettings!
+  const mode: ChatMode = userSettings ? 'reply' : chatSettings!.mode
+  if (!shouldCleanMessage(settings.cleanupEnabled, mode)) return
+  const result = await cleanTelegramEntities(message.text, message.entities || [], {
+    removeReferralMarketing: settings.removeReferralMarketing,
+    expandShortUrls: settings.expandShortUrls,
+    redirectResolver: settings.expandShortUrls ? expandShortUrl : undefined,
+  })
+  if (!result.changed) return
+  await deliverCleanedMessage(
+    api,
+    chatId,
+    message.message_id,
+    result.text,
+    result.entities,
+    mode,
+    t,
+  )
+}
+
+bot.on('message:text', async (ctx) => {
+  await handleTextMessage(ctx.api, ctx.chat.id, ctx.message, ctx.t, ctx.chat.type === 'private' ? ctx.from.id : undefined)
+})
+
+bot.on('channel_post:text', async (ctx) => {
+  await handleTextMessage(ctx.api, ctx.chat.id, ctx.channelPost, ctx.t)
 })

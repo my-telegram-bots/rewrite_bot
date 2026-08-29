@@ -1,6 +1,8 @@
 node_modules
 /dist
 /.env
-/prisma/*.db
+/data/*.db
+/data/*.db-shm
+/data/*.db-wal
 .DS_Store
 /test/coverage

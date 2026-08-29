@@ -1,39 +1,20 @@
-import { Telegraf } from 'telegraf'
+import { Bot } from 'grammy'
 import { BOT_TOKEN, MASTER_ID } from './config'
-import { prisma } from './db'
+import { BotContext } from './context'
+import { i18n } from './i18n'
+import { safeLogValue } from './handlers/common'
 
-export const bot = new Telegraf(BOT_TOKEN)
+if (!BOT_TOKEN) throw new Error('BOT_TOKEN is required')
 
-bot.launch().then(async () => {
-    try {
-        // db test
-        await prisma.$connect()
-        console.log(new Date(), 'bot started!', bot.botInfo?.id, '@' + bot.botInfo?.username)
-        if (MASTER_ID) {
-            bot.telegram.sendMessage(MASTER_ID, `${new Date().toString()} bot started!`)
-        }
-    } catch (error) {
-        console.log(new Date(), 'bot error', error)
-    }
-}).catch((e) => {
-    console.error(e)
-    console.error('You are offline or bad bot token')
-    process.exit()
+export const bot = new Bot<BotContext>(BOT_TOKEN)
+bot.use(i18n)
+
+bot.catch(async ({ error }) => {
+  const safeError = safeLogValue(error)
+  console.error(safeError)
+  if (MASTER_ID) {
+    await bot.api.sendMessage(MASTER_ID, `rewrite_bot error: ${safeError}`).catch((sendError) => {
+      console.error(safeLogValue(sendError))
+    })
+  }
 })
-
-// bot.use((ctx, next) => {
-//     next()
-// })
-
-// see https://github.com/telegraf/telegraf/issues/1323
-bot.on('channel_post', (ctx, next) => {
-    // @ts-ignore
-    ctx.update.message = ctx.update.channel_post
-    next()
-})
-bot.catch(async (err, ctx) => {
-    await ctx.telegram.sendMessage(MASTER_ID, 'got error' + err)
-    await ctx.telegram.sendMessage(MASTER_ID, JSON.stringify(err))
-})
-process.once('SIGINT', () => bot.stop('SIGINT'))
-process.once('SIGTERM', () => bot.stop('SIGTERM'))

@@ -1,14 +1,9 @@
 import { bot } from '../bot'
-import { prisma } from '../db'
+import { dbRepositories } from '../db'
 
-bot.command('/clean', async (ctx) => {
-    let { count } = await prisma.hideMessage.deleteMany({
-        where: {
-            user_id: ctx.from.id
-        }
-    })
-    await ctx.reply(`done, all(${count}) hideen inline messages have been cleaned`, {
-        reply_to_message_id: ctx.message.message_id
+bot.command('clean', async (ctx) => {
+    const count = dbRepositories().deleteHiddenMessagesForUser(ctx.from!.id)
+    await ctx.reply(ctx.t('clean-done', { count }), {
+        reply_parameters: { message_id: ctx.msg.message_id },
     })
 })
-
