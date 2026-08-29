@@ -155,7 +155,7 @@ test('builds native downloadable Telegram results and localized actionable failu
     state: 'ok',
     post: {
       provider: 'bluesky', sourceUrl: 'https://bsky.app/profile/bsky.app/post/3abc', text: 'hello 😀',
-      authorName: 'Bluesky', authorHandle: 'bsky.app',
+      authorName: 'Bluesky', authorHandle: '@bsky.app',
       media: [
         { kind: 'photo', url: 'https://cdn.bsky.app/img/photo', width: 100, height: 200, altText: 'Alt' },
         { kind: 'gif', url: 'https://pds-cache.fxbsky.app/a.mp4', thumbnailUrl: 'https://video.bsky.app/a.jpg', width: 10, height: 20 },
