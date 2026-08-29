@@ -18,6 +18,7 @@ type UserRow = {
   expand_short_urls: number
   remove_referral_marketing: number
   social_media_enabled: number
+  multi_image_mode: UserSettings['multiImageMode']
   hide_mode: number
   hide_disabled: string
   expired_time_offset: number
@@ -29,6 +30,7 @@ type ChatRow = {
   expand_short_urls: number
   remove_referral_marketing: number
   social_media_enabled: number
+  multi_image_mode: ChatSettings['multiImageMode']
   mode: ChatSettings['mode']
 }
 
@@ -107,6 +109,7 @@ export class Repositories {
           expand_short_urls = ?,
           remove_referral_marketing = ?,
           social_media_enabled = ?,
+          multi_image_mode = ?,
           hide_mode = ?,
           hide_disabled = ?,
           expired_time_offset = ?
@@ -116,6 +119,7 @@ export class Repositories {
         Number(patch.expandShortUrls ?? current.expandShortUrls),
         Number(patch.removeReferralMarketing ?? current.removeReferralMarketing),
         Number(patch.socialMediaEnabled ?? current.socialMediaEnabled),
+        patch.multiImageMode ?? current.multiImageMode,
         patch.hideMode ?? current.hideMode,
         patch.hideDisabled ?? current.hideDisabled,
         patch.expiredTimeOffset ?? current.expiredTimeOffset,
@@ -147,6 +151,7 @@ export class Repositories {
       expandShortUrls: bool(row.expand_short_urls),
       removeReferralMarketing: bool(row.remove_referral_marketing),
       socialMediaEnabled: bool(row.social_media_enabled),
+      multiImageMode: row.multi_image_mode,
       hideMode: row.hide_mode,
       hideDisabled: row.hide_disabled,
       expiredTimeOffset: row.expired_time_offset,
@@ -168,13 +173,15 @@ export class Repositories {
     const current = this.getOrCreateChatSettings(chatId)
     this.db.prepare(`
       UPDATE chat_settings SET
-        cleanup_enabled = ?, expand_short_urls = ?, remove_referral_marketing = ?, social_media_enabled = ?, mode = ?
+        cleanup_enabled = ?, expand_short_urls = ?, remove_referral_marketing = ?, social_media_enabled = ?,
+        multi_image_mode = ?, mode = ?
       WHERE chat_id = ?
     `).run(
       Number(patch.cleanupEnabled ?? current.cleanupEnabled),
       Number(patch.expandShortUrls ?? current.expandShortUrls),
       Number(patch.removeReferralMarketing ?? current.removeReferralMarketing),
       Number(patch.socialMediaEnabled ?? current.socialMediaEnabled),
+      patch.multiImageMode ?? current.multiImageMode,
       patch.mode ?? current.mode,
       chatId,
     )
@@ -189,6 +196,7 @@ export class Repositories {
       expandShortUrls: bool(row.expand_short_urls),
       removeReferralMarketing: bool(row.remove_referral_marketing),
       socialMediaEnabled: bool(row.social_media_enabled),
+      multiImageMode: row.multi_image_mode,
       mode: row.mode,
     }
   }

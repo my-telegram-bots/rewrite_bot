@@ -33,24 +33,30 @@ test('upserts defaults, validates IDs, rolls back bad patches, and persists sett
   const initial = repositories.getOrCreateUserSettings('90071992547409931')
   expect(initial).toMatchObject({
     userId: '90071992547409931', cleanupEnabled: true, expandShortUrls: true,
-    removeReferralMarketing: false, socialMediaEnabled: true, hidePlaceholders: ['█', '❔', '❓'],
+    removeReferralMarketing: false, socialMediaEnabled: true, multiImageMode: 'media_group',
+    hidePlaceholders: ['█', '❔', '❓'],
   })
   repositories.getOrCreateUserSettings('90071992547409931')
   expect(() => repositories.updateUserSettings('90071992547409931', { hidePlaceholders: [] })).toThrow()
+  expect(() => repositories.updateUserSettings('90071992547409931', {
+    multiImageMode: 'invalid' as never,
+  })).toThrow()
   expect(repositories.getOrCreateUserSettings('90071992547409931').hidePlaceholders).toEqual(['█', '❔', '❓'])
   repositories.updateUserSettings('90071992547409931', {
     cleanupEnabled: false,
     expandShortUrls: true,
     removeReferralMarketing: true,
     socialMediaEnabled: false,
+    multiImageMode: 'combine',
     hideMode: 2,
     hidePlaceholders: ['秘'],
   })
   expect(repositories.getOrCreateChatSettings('-1001234567890123')).toMatchObject({
     mode: 'replace', cleanupEnabled: true, expandShortUrls: true, socialMediaEnabled: true,
+    multiImageMode: 'media_group',
   })
   repositories.updateChatSettings('-1001234567890123', {
-    mode: 'reply', expandShortUrls: false, socialMediaEnabled: false,
+    mode: 'reply', expandShortUrls: false, socialMediaEnabled: false, multiImageMode: 'combine',
   })
   db.close()
 
@@ -59,10 +65,11 @@ test('upserts defaults, validates IDs, rolls back bad patches, and persists sett
   expect(repositories.getOrCreateUserSettings('90071992547409931')).toMatchObject({
     cleanupEnabled: false, expandShortUrls: true, removeReferralMarketing: true,
     socialMediaEnabled: false,
+    multiImageMode: 'combine',
     hideMode: 2, hidePlaceholders: ['秘'],
   })
   expect(repositories.getOrCreateChatSettings('-1001234567890123')).toMatchObject({
-    mode: 'reply', expandShortUrls: false, socialMediaEnabled: false,
+    mode: 'reply', expandShortUrls: false, socialMediaEnabled: false, multiImageMode: 'combine',
   })
   repositories.createHiddenNormalMessage({
     id: 'normal-created', userId: '90071992547409931', messageId: '90071992547409932',

@@ -1,4 +1,5 @@
 export const DEFAULT_HIDE_PLACEHOLDERS = ['█', '❔', '❓'] as const
+export type MultiImageMode = 'media_group' | 'combine'
 
 export interface UserSettings {
   userId: string
@@ -6,6 +7,7 @@ export interface UserSettings {
   expandShortUrls: boolean
   removeReferralMarketing: boolean
   socialMediaEnabled: boolean
+  multiImageMode: MultiImageMode
   hideMode: number
   hideDisabled: string
   expiredTimeOffset: number
@@ -20,6 +22,7 @@ export interface ChatSettings {
   expandShortUrls: boolean
   removeReferralMarketing: boolean
   socialMediaEnabled: boolean
+  multiImageMode: MultiImageMode
   mode: ChatMode
 }
 

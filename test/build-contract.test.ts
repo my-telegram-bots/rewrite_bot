@@ -17,6 +17,7 @@ test('release start command and copied migration match the compiled source layou
   expect(existsSync(resolve(__dirname, '..', 'src', 'db', 'migrations', '001_canonical_schema.sql'))).toBe(true)
   expect(existsSync(resolve(__dirname, '..', 'src', 'db', 'migrations', '002_short_links_default_on.sql'))).toBe(true)
   expect(existsSync(resolve(__dirname, '..', 'src', 'db', 'migrations', '003_social_media_default_on.sql'))).toBe(true)
+  expect(existsSync(resolve(__dirname, '..', 'src', 'db', 'migrations', '004_multi_image_mode.sql'))).toBe(true)
 })
 
 test('systemd deployment loads env and gates compiled startup on migration and checks', () => {

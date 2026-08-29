@@ -98,8 +98,9 @@ test('private /settings renders localized stable panel and callback persists thr
   expect(panelCall.payload.text).toContain('个人设置')
   expect(panelCall.payload.text).toContain('联网展开短链: 开')
   expect(panelCall.payload.text).toContain('社交媒体解析: 开')
+  expect(panelCall.payload.text).toContain('多图发送方式: 媒体组')
   expect((panelCall.payload.reply_markup as { inline_keyboard: unknown[][] }).inline_keyboard.map((row) => row.length))
-    .toEqual([1, 1, 1, 1, 1])
+    .toEqual([1, 1, 1, 2, 1, 1])
 
   calls.length = 0
   await bot.handleUpdate({
@@ -126,6 +127,19 @@ test('private /settings renders localized stable panel and callback persists thr
   })
   expect(calls.map(({ method }) => method)).toEqual(['editMessageText', 'answerCallbackQuery'])
   expect(dbRepositories().getOrCreateUserSettings('7').socialMediaEnabled).toBe(false)
+
+  calls.length = 0
+  await bot.handleUpdate({
+    update_id: 33,
+    callback_query: {
+      id: 'callback-private-combine', data: 'settings:u:multi:combine',
+      from: { id: 7, is_bot: false, first_name: '测试', language_code: 'zh-CN' },
+      chat_instance: 'private',
+      message: { message_id: 11, date: 1, text: 'panel', chat: { id: 7, type: 'private', first_name: '测试' } },
+    },
+  })
+  expect(calls.map(({ method }) => method)).toEqual(['editMessageText', 'answerCallbackQuery'])
+  expect(dbRepositories().getOrCreateUserSettings('7').multiImageMode).toBe('combine')
 })
 
 test('group callback rechecks administrator status before every mutation', async () => {
@@ -172,6 +186,27 @@ test('group callback rechecks administrator status before every mutation', async
   await bot.handleUpdate(mediaUpdate(27))
   expect(calls.map(({ method }) => method)).toEqual(['getChatMember', 'editMessageText', 'answerCallbackQuery'])
   expect(dbRepositories().getOrCreateChatSettings('-100').socialMediaEnabled).toBe(false)
+
+  const multiUpdate = (id: number) => ({
+    update_id: id,
+    callback_query: {
+      id: `callback-multi-${id}`, data: 'settings:g:multi:combine',
+      from: { id: 7, is_bot: false, first_name: 'Member', language_code: 'en' },
+      chat_instance: 'group',
+      message: { message_id: 20, date: 1, text: 'panel', chat: { id: -100, type: 'supergroup', title: 'Test' } },
+    },
+  } as const)
+  calls.length = 0
+  memberStatus = 'member'
+  await bot.handleUpdate(multiUpdate(34))
+  expect(calls.map(({ method }) => method)).toEqual(['getChatMember', 'answerCallbackQuery'])
+  expect(dbRepositories().getOrCreateChatSettings('-100').multiImageMode).toBe('media_group')
+
+  calls.length = 0
+  memberStatus = 'administrator'
+  await bot.handleUpdate(multiUpdate(35))
+  expect(calls.map(({ method }) => method)).toEqual(['getChatMember', 'editMessageText', 'answerCallbackQuery'])
+  expect(dbRepositories().getOrCreateChatSettings('-100').multiImageMode).toBe('combine')
 })
 
 test('inline query returns cleaned URL output through the grammY pipeline', async () => {
@@ -441,16 +476,28 @@ test('direct multi-photo post uses a Telegram media group and lookup failures re
   try {
     const { bot } = await import('../src/bot')
     const url = 'https://x.com/author/status/2093597769160438052'
-    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+    const payload = {
       code: 200,
       status: {
         type: 'status', provider: 'twitter', text: 'album',
-        media: { all: [
-          { type: 'photo', url: 'https://pbs.twimg.com/media/one.jpg' },
-          { type: 'photo', url: 'https://pbs.twimg.com/media/two.jpg' },
-        ] },
+        media: {
+          all: [
+            { type: 'photo', url: 'https://pbs.twimg.com/media/one.jpg' },
+            { type: 'photo', url: 'https://pbs.twimg.com/media/two.jpg' },
+          ],
+          mosaic: {
+            type: 'mosaic_photo',
+            formats: {
+              jpeg: 'https://mosaic.fxtwitter.com/jpeg/2093597769160438052/one/two',
+              webp: 'https://mosaic.fxtwitter.com/webp/2093597769160438052/one/two',
+            },
+          },
+        },
       },
-    }), { headers: { 'content-type': 'application/json' } }))
+    }
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(payload), {
+      headers: { 'content-type': 'application/json' },
+    }))
     await bot.handleUpdate({
       update_id: 28,
       message: {
@@ -469,6 +516,27 @@ test('direct multi-photo post uses a Telegram media group and lookup failures re
       expect.objectContaining({ type: 'text_link', url }),
     ]))
     expect(album[1]).toEqual({ type: 'photo', media: 'https://pbs.twimg.com/media/two.jpg' })
+
+    calls.length = 0
+    const { dbRepositories } = await import('../src/db')
+    dbRepositories().updateUserSettings('33', { multiImageMode: 'combine' })
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(payload), {
+      headers: { 'content-type': 'application/json' },
+    }))
+    await bot.handleUpdate({
+      update_id: 36,
+      message: {
+        message_id: 47, date: 1, text: url,
+        entities: [{ type: 'url', offset: 0, length: url.length }],
+        chat: { id: 33, type: 'private', first_name: 'Combined' },
+        from: { id: 33, is_bot: false, first_name: 'Combined', language_code: 'en' },
+      },
+    })
+    expect(calls.map(({ method }) => method)).toEqual(['sendPhoto'])
+    expect(calls[0].payload).toMatchObject({
+      photo: 'https://mosaic.fxtwitter.com/jpeg/2093597769160438052/one/two',
+      reply_parameters: { message_id: 47, allow_sending_without_reply: true },
+    })
 
     calls.length = 0
     fetchMock.mockResolvedValueOnce(new Response('unavailable', {

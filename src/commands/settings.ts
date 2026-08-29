@@ -1,5 +1,5 @@
 import { bot } from '../bot'
-import { ChatSettings, dbRepositories } from '../db'
+import { ChatSettings, dbRepositories, UserSettings } from '../db'
 import { chatSettingsPanel, isAdministrator, userSettingsPanel } from '../ui/settings-panel'
 
 async function callerIsAdministrator(chatId: number, userId: number): Promise<boolean> {
@@ -29,14 +29,21 @@ bot.callbackQuery(/^settings:/, async (ctx) => {
       await ctx.answerCallbackQuery({ text: ctx.t('settings-panel-expired'), show_alert: true })
       return
     }
-    if (!['cleanup', 'short', 'media', 'referral', 'hide'].includes(data[2]) || data.length !== 3) {
+    const validUserAction = data.length === 3 && ['cleanup', 'short', 'media', 'referral', 'hide'].includes(data[2])
+    const validUserMulti = data.length === 4 && data[2] === 'multi' && ['media_group', 'combine'].includes(data[3])
+    if (!validUserAction && !validUserMulti) {
       await ctx.answerCallbackQuery({ text: ctx.t('settings-panel-expired'), show_alert: true })
       return
     }
     const current = dbRepositories().getOrCreateUserSettings(ctx.from.id)
+    if (data[2] === 'multi' && data[3] === current.multiImageMode) {
+      await ctx.answerCallbackQuery({ text: ctx.t('settings-saved') })
+      return
+    }
     const patch = data[2] === 'cleanup' ? { cleanupEnabled: !current.cleanupEnabled }
       : data[2] === 'short' ? { expandShortUrls: !current.expandShortUrls }
       : data[2] === 'media' ? { socialMediaEnabled: !current.socialMediaEnabled }
+      : data[2] === 'multi' ? { multiImageMode: data[3] as UserSettings['multiImageMode'] }
       : data[2] === 'referral' ? { removeReferralMarketing: !current.removeReferralMarketing }
       : { hideMode: current.hideMode === 1 ? 2 : 1 }
     const panel = userSettingsPanel(dbRepositories().updateUserSettings(ctx.from.id, patch), ctx.t)
@@ -49,7 +56,10 @@ bot.callbackQuery(/^settings:/, async (ctx) => {
     return
   }
   const validGroupAction = data.length === 3 && ['cleanup', 'short', 'media', 'referral'].includes(data[2])
-  const validGroupMode = data.length === 4 && data[2] === 'mode' && ['replace', 'reply', 'off'].includes(data[3])
+  const validGroupMode = data.length === 4 && (
+    (data[2] === 'mode' && ['replace', 'reply', 'off'].includes(data[3])) ||
+    (data[2] === 'multi' && ['media_group', 'combine'].includes(data[3]))
+  )
   if (!validGroupAction && !validGroupMode) {
     await ctx.answerCallbackQuery({ text: ctx.t('settings-panel-expired'), show_alert: true })
     return
@@ -62,11 +72,13 @@ bot.callbackQuery(/^settings:/, async (ctx) => {
     return
   }
   const current = dbRepositories().getOrCreateChatSettings(chat.id)
-  if (data[2] === 'mode' && data[3] === current.mode) {
+  if ((data[2] === 'mode' && data[3] === current.mode) ||
+    (data[2] === 'multi' && data[3] === current.multiImageMode)) {
     await ctx.answerCallbackQuery({ text: ctx.t('settings-saved') })
     return
   }
   const patch = data[2] === 'mode' ? { mode: data[3] as ChatSettings['mode'] }
+    : data[2] === 'multi' ? { multiImageMode: data[3] as ChatSettings['multiImageMode'] }
     : data[2] === 'cleanup' ? { cleanupEnabled: !current.cleanupEnabled }
     : data[2] === 'short' ? { expandShortUrls: !current.expandShortUrls }
     : data[2] === 'media' ? { socialMediaEnabled: !current.socialMediaEnabled }

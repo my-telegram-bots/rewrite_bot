@@ -34,7 +34,14 @@ async function handleTextMessage(
     .find(Boolean)
   const reference = settings.socialMediaEnabled ? findFirstSocialPost(result.text) || linkedReference : undefined
   if (reference) {
-    await deliverSocialMedia(api, chatId, message.message_id, await resolveSocialMedia(reference), t)
+    await deliverSocialMedia(
+      api,
+      chatId,
+      message.message_id,
+      await resolveSocialMedia(reference),
+      t,
+      settings.multiImageMode,
+    )
     return
   }
   if (!result.changed) return

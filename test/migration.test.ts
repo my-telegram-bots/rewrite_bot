@@ -73,6 +73,7 @@ test('migrates all legacy data exactly, creates a backup, and is idempotent', as
     hide_mode: 2, hide_disabled: 'legacy-disabled-value', expired_time_offset: 3600,
     cleanup_enabled: 1, expand_short_urls: 1, remove_referral_marketing: 0,
     social_media_enabled: 1,
+    multi_image_mode: 'media_group',
   })
   expect(db.prepare('SELECT placeholder FROM user_hide_placeholders WHERE user_id = ? ORDER BY position').all('9007199254740993'))
     .toEqual([{ placeholder: '█' }, { placeholder: '疑問' }])
@@ -81,10 +82,10 @@ test('migrates all legacy data exactly, creates a backup, and is idempotent', as
   expect(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('hideMessage','hideNormalMessage','userSetting')").all())
     .toHaveLength(0)
   expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all())
-    .toEqual([{ version: 1 }, { version: 2 }, { version: 3 }])
+    .toEqual([{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }])
   db.close()
 
-  await expect(migrateDatabase(path)).resolves.toEqual({ migrated: false, version: 3 })
+  await expect(migrateDatabase(path)).resolves.toEqual({ migrated: false, version: 4 })
 })
 
 test('upgrades v1 defaults without overwriting existing short-link choices', async () => {
@@ -103,7 +104,7 @@ test('upgrades v1 defaults without overwriting existing short-link choices', asy
   db.prepare('INSERT INTO chat_settings (chat_id, expand_short_urls) VALUES (?, ?)').run('-10', 0)
   db.close()
 
-  await expect(migrateDatabase(path)).resolves.toMatchObject({ migrated: true, version: 3 })
+  await expect(migrateDatabase(path)).resolves.toMatchObject({ migrated: true, version: 4 })
   const upgraded = new Database(path)
   expect(upgraded.prepare('SELECT user_id, expand_short_urls FROM user_settings ORDER BY user_id').all())
     .toEqual([
@@ -131,6 +132,17 @@ test('upgrades v1 defaults without overwriting existing short-link choices', asy
       { chat_id: '-10', social_media_enabled: 1 },
       { chat_id: '-12', social_media_enabled: 1 },
     ])
+  expect(upgraded.prepare('SELECT user_id, multi_image_mode FROM user_settings ORDER BY user_id').all())
+    .toEqual([
+      { user_id: '10', multi_image_mode: 'media_group' },
+      { user_id: '11', multi_image_mode: 'media_group' },
+      { user_id: '12', multi_image_mode: 'media_group' },
+    ])
+  expect(upgraded.prepare('SELECT chat_id, multi_image_mode FROM chat_settings ORDER BY chat_id').all())
+    .toEqual([
+      { chat_id: '-10', multi_image_mode: 'media_group' },
+      { chat_id: '-12', multi_image_mode: 'media_group' },
+    ])
   upgraded.close()
 })
 
@@ -142,4 +154,48 @@ test('rolls back the schema switch when legacy normalization fails', async () =>
   expect(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='hideMessage'").get()).toBeTruthy()
   expect(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='hidden_messages'").get()).toBeUndefined()
   db.close()
+})
+
+test('upgrades v3 settings to default media-group mode without changing existing choices', async () => {
+  const path = join(TEST_ROOT, 'canonical-v3.db')
+  const db = new Database(path)
+  for (const [version, name] of [
+    [1, 'canonical_sqlite_v1'],
+    [2, 'short_links_default_on'],
+    [3, 'social_media_default_on'],
+  ] as const) {
+    const sql = require('fs').readFileSync(
+      join(__dirname, '..', 'src', 'db', 'migrations', `00${version}_${[
+        'canonical_schema', 'short_links_default_on', 'social_media_default_on',
+      ][version - 1]}.sql`),
+      'utf8',
+    ) as string
+    db.exec(sql)
+    db.prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)')
+      .run(version, name, `2026-08-29T00:00:0${version}.000Z`)
+  }
+  db.prepare(`
+    INSERT INTO user_settings
+      (user_id, cleanup_enabled, expand_short_urls, remove_referral_marketing, social_media_enabled, hide_mode)
+    VALUES ('30', 0, 0, 1, 0, 2)
+  `).run()
+  db.prepare('INSERT INTO user_hide_placeholders VALUES (?, ?, ?)').run('30', 0, '秘')
+  db.prepare(`
+    INSERT INTO chat_settings
+      (chat_id, cleanup_enabled, expand_short_urls, remove_referral_marketing, social_media_enabled, mode)
+    VALUES ('-30', 0, 0, 1, 0, 'off')
+  `).run()
+  db.close()
+
+  await expect(migrateDatabase(path)).resolves.toMatchObject({ migrated: true, version: 4 })
+  const upgraded = new Database(path)
+  expect(upgraded.prepare('SELECT * FROM user_settings WHERE user_id = ?').get('30')).toMatchObject({
+    cleanup_enabled: 0, expand_short_urls: 0, remove_referral_marketing: 1,
+    social_media_enabled: 0, hide_mode: 2, multi_image_mode: 'media_group',
+  })
+  expect(upgraded.prepare('SELECT * FROM chat_settings WHERE chat_id = ?').get('-30')).toMatchObject({
+    cleanup_enabled: 0, expand_short_urls: 0, remove_referral_marketing: 1,
+    social_media_enabled: 0, mode: 'off', multi_image_mode: 'media_group',
+  })
+  upgraded.close()
 })

@@ -9,25 +9,26 @@ const t = (key: string, values: Record<string, string | number> = {}) =>
 const user: UserSettings = {
   userId: '1', cleanupEnabled: true, expandShortUrls: false, removeReferralMarketing: false,
   socialMediaEnabled: true,
+  multiImageMode: 'media_group',
   hideMode: 1, hideDisabled: '', expiredTimeOffset: 0, hidePlaceholders: ['█'],
 }
 const chat: ChatSettings = {
   chatId: '-1', cleanupEnabled: true, expandShortUrls: false, removeReferralMarketing: false,
-  socialMediaEnabled: true, mode: 'replace',
+  socialMediaEnabled: true, multiImageMode: 'media_group', mode: 'replace',
 }
 
 test('settings panels keep fixed row geometry across every normal toggle and mode', () => {
   const userReady = userSettingsPanel(user, t)
   const userChanged = userSettingsPanel({ ...user, cleanupEnabled: false, expandShortUrls: true, hideMode: 2 }, t)
-  expect(userReady.text.split('\n')).toHaveLength(7)
-  expect(userChanged.text.split('\n')).toHaveLength(7)
-  expect(userReady.keyboard.inline_keyboard.map((row) => row.length)).toEqual([1, 1, 1, 1, 1])
-  expect(userChanged.keyboard.inline_keyboard.map((row) => row.length)).toEqual([1, 1, 1, 1, 1])
+  expect(userReady.text.split('\n')).toHaveLength(8)
+  expect(userChanged.text.split('\n')).toHaveLength(8)
+  expect(userReady.keyboard.inline_keyboard.map((row) => row.length)).toEqual([1, 1, 1, 2, 1, 1])
+  expect(userChanged.keyboard.inline_keyboard.map((row) => row.length)).toEqual([1, 1, 1, 2, 1, 1])
   for (const mode of ['replace', 'reply', 'off'] as const) {
     for (const mayEdit of [true, false]) {
       const panel = chatSettingsPanel({ ...chat, mode }, mayEdit, t)
-      expect(panel.text.split('\n')).toHaveLength(8)
-      expect(panel.keyboard.inline_keyboard.map((row) => row.length)).toEqual([3, 1, 1, 1, 1])
+      expect(panel.text.split('\n')).toHaveLength(9)
+      expect(panel.keyboard.inline_keyboard.map((row) => row.length)).toEqual([3, 1, 1, 1, 2, 1])
     }
   }
 })

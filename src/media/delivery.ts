@@ -1,5 +1,6 @@
 import type { InputMediaPhoto, InputMediaVideo, MessageEntity } from 'grammy/types'
 import { Translator } from '../context'
+import { MultiImageMode } from '../db'
 import { buildMediaCaption } from './caption'
 import { ResolvedMedia, SocialMediaResolution } from './fxembed'
 
@@ -28,6 +29,7 @@ export async function deliverSocialMedia(
   messageId: number,
   resolution: SocialMediaResolution,
   t: Translator,
+  multiImageMode: MultiImageMode = 'media_group',
 ): Promise<'sent' | 'failed' | 'not_found'> {
   const reply_parameters: ReplyParameters = {
     message_id: messageId,
@@ -43,6 +45,15 @@ export async function deliverSocialMedia(
   }
 
   const caption = buildMediaCaption(resolution.post, t)
+  const allPhotos = resolution.post.media.length >= 2 && resolution.post.media.every((media) => media.kind === 'photo')
+  if (multiImageMode === 'combine' && resolution.post.combinedImage && allPhotos) {
+    await api.sendPhoto(chatId, resolution.post.combinedImage.url, {
+      reply_parameters,
+      caption: caption.text,
+      caption_entities: caption.entities,
+    })
+    return 'sent'
+  }
   let captionPending = true
   for (let index = 0; index < resolution.post.media.length;) {
     const current = resolution.post.media[index]
