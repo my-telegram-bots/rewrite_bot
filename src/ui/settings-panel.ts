@@ -13,6 +13,7 @@ export function userSettingsPanel(settings: UserSettings, t: Translator): { text
     t('user-settings-title'),
     `${t('cleanup-label')}: ${enabled(settings.cleanupEnabled, t)}`,
     `${t('short-links-label')}: ${enabled(settings.expandShortUrls, t)}`,
+    `${t('social-media-label')}: ${enabled(settings.socialMediaEnabled, t)}`,
     `${t('referral-label')}: ${enabled(settings.removeReferralMarketing, t)}`,
     `${t('hide-style-label')}: ${style}`,
     t('user-settings-persisted'),
@@ -20,6 +21,7 @@ export function userSettingsPanel(settings: UserSettings, t: Translator): { text
   const keyboard = new InlineKeyboard()
     .text(t('button-cleanup', { state: enabled(settings.cleanupEnabled, t) }), 'settings:u:cleanup').row()
     .text(t('button-short-links', { state: enabled(settings.expandShortUrls, t) }), 'settings:u:short').row()
+    .text(t('button-social-media', { state: enabled(settings.socialMediaEnabled, t) }), 'settings:u:media').row()
     .text(t('button-referral', { state: enabled(settings.removeReferralMarketing, t) }), 'settings:u:referral').row()
     .text(t('button-hide-style', { style }), 'settings:u:hide')
   return { text, keyboard }
@@ -36,6 +38,7 @@ export function chatSettingsPanel(
     `${t('chat-mode-label')}: ${mode}`,
     `${t('cleanup-label')}: ${enabled(settings.cleanupEnabled, t)}`,
     `${t('short-links-label')}: ${enabled(settings.expandShortUrls, t)}`,
+    `${t('social-media-label')}: ${enabled(settings.socialMediaEnabled, t)}`,
     `${t('referral-label')}: ${enabled(settings.removeReferralMarketing, t)}`,
     t('chat-replace-disclosure'),
     t(mayEdit ? 'chat-admin-can-edit' : 'chat-admin-view-only'),
@@ -46,6 +49,7 @@ export function chatSettingsPanel(
     .text(t('button-mode-off', { selected: settings.mode === 'off' ? '●' : '○' }), 'settings:g:mode:off').row()
     .text(t('button-cleanup', { state: enabled(settings.cleanupEnabled, t) }), 'settings:g:cleanup').row()
     .text(t('button-short-links', { state: enabled(settings.expandShortUrls, t) }), 'settings:g:short').row()
+    .text(t('button-social-media', { state: enabled(settings.socialMediaEnabled, t) }), 'settings:g:media').row()
     .text(t('button-referral', { state: enabled(settings.removeReferralMarketing, t) }), 'settings:g:referral')
   return { text, keyboard }
 }
