@@ -1,4 +1,8 @@
 start = Welcome to rewrite bot. I can remove tracking parameters, expand approved short links, and hide text.
+command-start = Open rewrite bot and show help
+command-settings = Configure persistent bot settings
+command-clean = Delete your stored hidden messages
+command-id = Show this chat and user ID
 clean-done = Done. Deleted { $count } hidden inline messages.
 read-button = Read
 message-not-found = Message not found.

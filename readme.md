@@ -10,6 +10,8 @@ rewrite_bot is a grammY-based Telegram utility bot for removing tracking data fr
 - grammY with the official i18n plugin; English and Simplified Chinese Fluent resources ship in `locales/`
 - A release-pinned ClearURLs rules snapshot; no runtime rules download
 
+On every successful startup, the bot automatically synchronizes its English and Simplified Chinese Telegram command menus. Private chats show `/start`, `/settings`, `/clean`, and `/id`; groups show `/settings` and `/id`, so no manual BotFather command setup is required.
+
 ## Setup
 
 ```sh

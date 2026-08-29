@@ -27,8 +27,12 @@ async function handleTextMessage(
       expandShortUrls: settings.expandShortUrls,
       redirectResolver: settings.expandShortUrls ? expandShortUrl : undefined,
     })
-    : { text: message.text, entities: message.entities || [], changed: false, urls: [] }
-  const reference = settings.socialMediaEnabled ? findFirstSocialPost(result.text) : undefined
+    : { text: message.text, entities: message.entities || [], changed: false }
+  const linkedReference = result.entities
+    .filter((entity) => entity.type === 'text_link')
+    .map((entity) => entity.type === 'text_link' ? findFirstSocialPost(entity.url) : undefined)
+    .find(Boolean)
+  const reference = settings.socialMediaEnabled ? findFirstSocialPost(result.text) || linkedReference : undefined
   if (reference) {
     await deliverSocialMedia(api, chatId, message.message_id, await resolveSocialMedia(reference), t)
     return

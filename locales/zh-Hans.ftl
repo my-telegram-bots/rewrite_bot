@@ -1,4 +1,8 @@
 start = 欢迎使用 rewrite bot。我可以清理追踪参数、展开已批准的短链并隐藏文本。
+command-start = 打开 rewrite bot 并查看帮助
+command-settings = 配置持久化 bot 设置
+command-clean = 删除你存储的隐藏消息
+command-id = 查看当前聊天和用户 ID
 clean-done = 完成。已删除 { $count } 条隐藏 inline 消息。
 read-button = 阅读
 message-not-found = 未找到消息。

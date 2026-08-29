@@ -51,6 +51,18 @@ beforeAll(async () => {
     if (method === 'sendMessage') {
       return { ok: true, result: { message_id: 99, date: 1, chat: { id: capturedPayload.chat_id, type: 'private' }, text: capturedPayload.text } } as never
     }
+    if (method === 'sendMediaGroup') {
+      return { ok: true, result: [{ message_id: 100, date: 1, chat: { id: capturedPayload.chat_id, type: 'private' }, photo: [] }] } as never
+    }
+    if (method === 'sendPhoto') {
+      return { ok: true, result: { message_id: 100, date: 1, chat: { id: capturedPayload.chat_id, type: 'private' }, photo: [] } } as never
+    }
+    if (method === 'sendVideo') {
+      return { ok: true, result: { message_id: 100, date: 1, chat: { id: capturedPayload.chat_id, type: 'private' }, video: {} } } as never
+    }
+    if (method === 'sendAnimation') {
+      return { ok: true, result: { message_id: 100, date: 1, chat: { id: capturedPayload.chat_id, type: 'private' }, animation: {} } } as never
+    }
     return { ok: true, result: true } as never
   })
   await import('../src/commands/index')
@@ -85,8 +97,9 @@ test('private /settings renders localized stable panel and callback persists thr
   const panelCall = calls.find(({ method }) => method === 'sendMessage')!
   expect(panelCall.payload.text).toContain('个人设置')
   expect(panelCall.payload.text).toContain('联网展开短链: 开')
+  expect(panelCall.payload.text).toContain('社交媒体解析: 开')
   expect((panelCall.payload.reply_markup as { inline_keyboard: unknown[][] }).inline_keyboard.map((row) => row.length))
-    .toEqual([1, 1, 1, 1])
+    .toEqual([1, 1, 1, 1, 1])
 
   calls.length = 0
   await bot.handleUpdate({
@@ -100,6 +113,19 @@ test('private /settings renders localized stable panel and callback persists thr
   })
   expect(calls.map(({ method }) => method)).toEqual(['editMessageText', 'answerCallbackQuery'])
   expect(dbRepositories().getOrCreateUserSettings('7').expandShortUrls).toBe(false)
+
+  calls.length = 0
+  await bot.handleUpdate({
+    update_id: 21,
+    callback_query: {
+      id: 'callback-private-media', data: 'settings:u:media',
+      from: { id: 7, is_bot: false, first_name: '测试', language_code: 'zh-CN' },
+      chat_instance: 'private',
+      message: { message_id: 11, date: 1, text: 'panel', chat: { id: 7, type: 'private', first_name: '测试' } },
+    },
+  })
+  expect(calls.map(({ method }) => method)).toEqual(['editMessageText', 'answerCallbackQuery'])
+  expect(dbRepositories().getOrCreateUserSettings('7').socialMediaEnabled).toBe(false)
 })
 
 test('group callback rechecks administrator status before every mutation', async () => {
@@ -125,6 +151,27 @@ test('group callback rechecks administrator status before every mutation', async
   await bot.handleUpdate(update(4))
   expect(calls.map(({ method }) => method)).toEqual(['getChatMember', 'editMessageText', 'answerCallbackQuery'])
   expect(dbRepositories().getOrCreateChatSettings('-100').mode).toBe('reply')
+
+  const mediaUpdate = (id: number) => ({
+    update_id: id,
+    callback_query: {
+      id: `callback-media-${id}`, data: 'settings:g:media',
+      from: { id: 7, is_bot: false, first_name: 'Member', language_code: 'en' },
+      chat_instance: 'group',
+      message: { message_id: 20, date: 1, text: 'panel', chat: { id: -100, type: 'supergroup', title: 'Test' } },
+    },
+  } as const)
+  calls.length = 0
+  memberStatus = 'member'
+  await bot.handleUpdate(mediaUpdate(26))
+  expect(calls.map(({ method }) => method)).toEqual(['getChatMember', 'answerCallbackQuery'])
+  expect(dbRepositories().getOrCreateChatSettings('-100').socialMediaEnabled).toBe(true)
+
+  calls.length = 0
+  memberStatus = 'administrator'
+  await bot.handleUpdate(mediaUpdate(27))
+  expect(calls.map(({ method }) => method)).toEqual(['getChatMember', 'editMessageText', 'answerCallbackQuery'])
+  expect(dbRepositories().getOrCreateChatSettings('-100').socialMediaEnabled).toBe(false)
 })
 
 test('inline query returns cleaned URL output through the grammY pipeline', async () => {
@@ -253,4 +300,229 @@ test('inline query beginning with the bot zero-width marker also bypasses URL cl
   expect(results.find(({ id }) => id === 'clean-url')).toBeUndefined()
   expect(results.find(({ id }) => id === 'split-character')?.input_message_content.message_text)
     .toContain('u t m _ s o u r c e = t e s t')
+})
+
+test('direct X photo link resolves selected original media with quoted localized caption and retains original', async () => {
+  const originalFetch = global.fetch
+  const fetchMock = jest.fn(async () => new Response(JSON.stringify({
+    code: 200,
+    status: {
+      type: 'status', provider: 'twitter', text: '正文 😀',
+      author: { name: '作者', screen_name: 'author' },
+      media: { all: [
+        { type: 'photo', url: 'https://pbs.twimg.com/media/one.jpg' },
+        { type: 'photo', url: 'https://pbs.twimg.com/media/two.jpg' },
+      ] },
+    },
+  }), { headers: { 'content-type': 'application/json' } }))
+  global.fetch = fetchMock as typeof fetch
+  try {
+    const { bot } = await import('../src/bot')
+    const url = 'https://x.com/author/status/2093597769160438051/photo/1'
+    await bot.handleUpdate({
+      update_id: 22,
+      message: {
+        message_id: 40, date: 1, text: url,
+        entities: [{ type: 'url', offset: 0, length: url.length }],
+        chat: { id: -222, type: 'supergroup', title: 'Media group' },
+        from: { id: 22, is_bot: false, first_name: 'Sender', language_code: 'zh-CN' },
+      },
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(calls.map(({ method }) => method)).toEqual(['sendPhoto'])
+    expect(calls[0].payload).toMatchObject({
+      chat_id: -222,
+      photo: 'https://pbs.twimg.com/media/one.jpg',
+      caption: expect.stringMatching(/^\u200C正文 😀\n\n作者 \(@author\)\n查看原帖$/u),
+      reply_parameters: { message_id: 40, allow_sending_without_reply: true },
+    })
+    expect(calls[0].payload.caption_entities).toEqual([
+      { type: 'blockquote', offset: 1, length: '正文 😀'.length },
+      { type: 'bold', offset: 1 + '正文 😀'.length + 2, length: '作者 (@author)'.length },
+      { type: 'text_link', offset: (calls[0].payload.caption as string).length - '查看原帖'.length, length: '查看原帖'.length, url },
+    ])
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+test('direct Bluesky video becomes a downloadable Telegram video reply', async () => {
+  const originalFetch = global.fetch
+  global.fetch = jest.fn(async () => new Response(JSON.stringify({
+    code: 200,
+    status: {
+      type: 'status', provider: 'bluesky', text: 'video post',
+      media: { all: [{
+        type: 'video', format: 'video/mp4', url: 'https://pds-cache.fxbsky.app/video.mp4',
+        thumbnail_url: 'https://video.bsky.app/thumb.jpg',
+        formats: [{ container: 'mp4', codec: 'h264', url: 'https://pds-cache.fxbsky.app/video.mp4' }],
+      }] },
+    },
+  }), { headers: { 'content-type': 'application/json' } })) as typeof fetch
+  try {
+    const { bot } = await import('../src/bot')
+    const url = 'https://bsky.app/profile/bsky.app/post/3l3vgf77uco2g'
+    await bot.handleUpdate({
+      update_id: 23,
+      message: {
+        message_id: 41, date: 1, text: url,
+        entities: [{ type: 'url', offset: 0, length: url.length }],
+        chat: { id: 23, type: 'private', first_name: 'Video' },
+        from: { id: 23, is_bot: false, first_name: 'Video', language_code: 'en' },
+      },
+    })
+    expect(calls.map(({ method }) => method)).toEqual(['sendVideo'])
+    expect(calls[0].payload).toMatchObject({
+      video: 'https://pds-cache.fxbsky.app/video.mp4',
+      reply_parameters: { message_id: 41, allow_sending_without_reply: true },
+    })
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+test('disabled social-media setting prevents direct and inline FxEmbed requests', async () => {
+  const originalFetch = global.fetch
+  const fetchMock = jest.fn()
+  global.fetch = fetchMock as typeof fetch
+  try {
+    const { bot } = await import('../src/bot')
+    const { dbRepositories } = await import('../src/db')
+    dbRepositories().updateUserSettings('24', { socialMediaEnabled: false })
+    const url = 'https://x.com/author/status/2093597769160438051'
+    await bot.handleUpdate({
+      update_id: 24,
+      message: {
+        message_id: 42, date: 1, text: url,
+        entities: [{ type: 'url', offset: 0, length: url.length }],
+        chat: { id: 24, type: 'private', first_name: 'Disabled' },
+        from: { id: 24, is_bot: false, first_name: 'Disabled', language_code: 'en' },
+      },
+    })
+    await bot.handleUpdate({
+      update_id: 25,
+      inline_query: {
+        id: 'inline-disabled', offset: '', query: url,
+        from: { id: 24, is_bot: false, first_name: 'Disabled', language_code: 'en' },
+      },
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(calls.some(({ method }) => ['sendPhoto', 'sendVideo', 'sendAnimation', 'sendMediaGroup'].includes(method))).toBe(false)
+    const answer = calls.find(({ method }) => method === 'answerInlineQuery')!
+    const results = answer.payload.results as Array<{ id: string }>
+    expect(results.some(({ id }) => id.startsWith('media-'))).toBe(false)
+    expect(results.some(({ id }) => id === 'fxtwitter-link')).toBe(true)
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+test('direct multi-photo post uses a Telegram media group and lookup failures remain actionable', async () => {
+  const originalFetch = global.fetch
+  const fetchMock = jest.fn()
+  global.fetch = fetchMock as typeof fetch
+  try {
+    const { bot } = await import('../src/bot')
+    const url = 'https://x.com/author/status/2093597769160438052'
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+      code: 200,
+      status: {
+        type: 'status', provider: 'twitter', text: 'album',
+        media: { all: [
+          { type: 'photo', url: 'https://pbs.twimg.com/media/one.jpg' },
+          { type: 'photo', url: 'https://pbs.twimg.com/media/two.jpg' },
+        ] },
+      },
+    }), { headers: { 'content-type': 'application/json' } }))
+    await bot.handleUpdate({
+      update_id: 28,
+      message: {
+        message_id: 43, date: 1, text: url,
+        entities: [{ type: 'url', offset: 0, length: url.length }],
+        chat: { id: 28, type: 'private', first_name: 'Album' },
+        from: { id: 28, is_bot: false, first_name: 'Album', language_code: 'en' },
+      },
+    })
+    expect(calls.map(({ method }) => method)).toEqual(['sendMediaGroup'])
+    const album = calls[0].payload.media as Array<Record<string, unknown>>
+    expect(album).toHaveLength(2)
+    expect(album[0]).toMatchObject({ type: 'photo', media: 'https://pbs.twimg.com/media/one.jpg' })
+    expect(album[0].caption_entities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'blockquote' }),
+      expect.objectContaining({ type: 'text_link', url }),
+    ]))
+    expect(album[1]).toEqual({ type: 'photo', media: 'https://pbs.twimg.com/media/two.jpg' })
+
+    calls.length = 0
+    fetchMock.mockResolvedValueOnce(new Response('unavailable', {
+      status: 503,
+      headers: { 'content-type': 'text/plain' },
+    }))
+    await bot.handleUpdate({
+      update_id: 29,
+      message: {
+        message_id: 44, date: 1, text: url,
+        entities: [{ type: 'url', offset: 0, length: url.length }],
+        chat: { id: 29, type: 'private', first_name: 'Failure' },
+        from: { id: 29, is_bot: false, first_name: 'Failure', language_code: 'en' },
+      },
+    })
+    expect(calls.map(({ method }) => method)).toEqual(['sendMessage'])
+    expect(calls[0].payload.text).toEqual(expect.stringContaining('MEDIA_LOOKUP_FAILED'))
+    expect(calls[0].payload.reply_parameters).toEqual({ message_id: 44, allow_sending_without_reply: true })
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+test('direct text_link targets are parsed and the processed marker prevents media reprocessing', async () => {
+  const originalFetch = global.fetch
+  const fetchMock = jest.fn(async () => new Response(JSON.stringify({
+    code: 200,
+    status: {
+      type: 'status', provider: 'twitter', text: 'linked',
+      media: { all: [{ type: 'photo', url: 'https://pbs.twimg.com/media/linked.jpg' }] },
+    },
+  }), { headers: { 'content-type': 'application/json' } }))
+  global.fetch = fetchMock as typeof fetch
+  try {
+    const { bot } = await import('../src/bot')
+    const target = 'https://x.com/author/status/2093597769160438053'
+    await bot.handleUpdate({
+      update_id: 30,
+      message: {
+        message_id: 45, date: 1, text: '原帖',
+        entities: [{ type: 'text_link', offset: 0, length: 2, url: target }],
+        chat: { id: 30, type: 'private', first_name: 'Linked' },
+        from: { id: 30, is_bot: false, first_name: 'Linked', language_code: 'zh-CN' },
+      },
+    })
+    expect(calls.map(({ method }) => method)).toEqual(['sendPhoto'])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    calls.length = 0
+    const marked = `\u200C${target}`
+    await bot.handleUpdate({
+      update_id: 31,
+      message: {
+        message_id: 46, date: 1, text: marked,
+        entities: [{ type: 'url', offset: 1, length: target.length }],
+        chat: { id: 31, type: 'private', first_name: 'Marked' },
+        from: { id: 31, is_bot: false, first_name: 'Marked', language_code: 'en' },
+      },
+    })
+    await bot.handleUpdate({
+      update_id: 32,
+      inline_query: {
+        id: 'inline-marked-media', offset: '', query: marked,
+        from: { id: 31, is_bot: false, first_name: 'Marked', language_code: 'en' },
+      },
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const answer = calls.find(({ method }) => method === 'answerInlineQuery')!
+    const results = answer.payload.results as Array<{ id: string }>
+    expect(results.some(({ id }) => id.startsWith('media-'))).toBe(false)
+  } finally {
+    global.fetch = originalFetch
+  }
 })
