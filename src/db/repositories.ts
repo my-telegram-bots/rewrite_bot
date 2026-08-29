@@ -17,6 +17,7 @@ type UserRow = {
   cleanup_enabled: number
   expand_short_urls: number
   remove_referral_marketing: number
+  social_media_enabled: number
   hide_mode: number
   hide_disabled: string
   expired_time_offset: number
@@ -27,6 +28,7 @@ type ChatRow = {
   cleanup_enabled: number
   expand_short_urls: number
   remove_referral_marketing: number
+  social_media_enabled: number
   mode: ChatSettings['mode']
 }
 
@@ -104,6 +106,7 @@ export class Repositories {
           cleanup_enabled = ?,
           expand_short_urls = ?,
           remove_referral_marketing = ?,
+          social_media_enabled = ?,
           hide_mode = ?,
           hide_disabled = ?,
           expired_time_offset = ?
@@ -112,6 +115,7 @@ export class Repositories {
         Number(patch.cleanupEnabled ?? current.cleanupEnabled),
         Number(patch.expandShortUrls ?? current.expandShortUrls),
         Number(patch.removeReferralMarketing ?? current.removeReferralMarketing),
+        Number(patch.socialMediaEnabled ?? current.socialMediaEnabled),
         patch.hideMode ?? current.hideMode,
         patch.hideDisabled ?? current.hideDisabled,
         patch.expiredTimeOffset ?? current.expiredTimeOffset,
@@ -142,6 +146,7 @@ export class Repositories {
       cleanupEnabled: bool(row.cleanup_enabled),
       expandShortUrls: bool(row.expand_short_urls),
       removeReferralMarketing: bool(row.remove_referral_marketing),
+      socialMediaEnabled: bool(row.social_media_enabled),
       hideMode: row.hide_mode,
       hideDisabled: row.hide_disabled,
       expiredTimeOffset: row.expired_time_offset,
@@ -163,12 +168,13 @@ export class Repositories {
     const current = this.getOrCreateChatSettings(chatId)
     this.db.prepare(`
       UPDATE chat_settings SET
-        cleanup_enabled = ?, expand_short_urls = ?, remove_referral_marketing = ?, mode = ?
+        cleanup_enabled = ?, expand_short_urls = ?, remove_referral_marketing = ?, social_media_enabled = ?, mode = ?
       WHERE chat_id = ?
     `).run(
       Number(patch.cleanupEnabled ?? current.cleanupEnabled),
       Number(patch.expandShortUrls ?? current.expandShortUrls),
       Number(patch.removeReferralMarketing ?? current.removeReferralMarketing),
+      Number(patch.socialMediaEnabled ?? current.socialMediaEnabled),
       patch.mode ?? current.mode,
       chatId,
     )
@@ -182,6 +188,7 @@ export class Repositories {
       cleanupEnabled: bool(row.cleanup_enabled),
       expandShortUrls: bool(row.expand_short_urls),
       removeReferralMarketing: bool(row.remove_referral_marketing),
+      socialMediaEnabled: bool(row.social_media_enabled),
       mode: row.mode,
     }
   }

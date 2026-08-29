@@ -5,6 +5,7 @@ export interface UserSettings {
   cleanupEnabled: boolean
   expandShortUrls: boolean
   removeReferralMarketing: boolean
+  socialMediaEnabled: boolean
   hideMode: number
   hideDisabled: string
   expiredTimeOffset: number
@@ -18,6 +19,7 @@ export interface ChatSettings {
   cleanupEnabled: boolean
   expandShortUrls: boolean
   removeReferralMarketing: boolean
+  socialMediaEnabled: boolean
   mode: ChatMode
 }
 

@@ -7,6 +7,7 @@ import { DEFAULT_HIDE_PLACEHOLDERS } from './types'
 const migrationSql = new Map([
   [1, readFileSync(join(__dirname, 'migrations', '001_canonical_schema.sql'), 'utf8')],
   [2, readFileSync(join(__dirname, 'migrations', '002_short_links_default_on.sql'), 'utf8')],
+  [3, readFileSync(join(__dirname, 'migrations', '003_social_media_default_on.sql'), 'utf8')],
 ])
 const LEGACY_TABLES = ['hideMessage', 'hideNormalMessage', 'userSetting'] as const
 
@@ -164,6 +165,15 @@ export async function migrateDatabase(path: string): Promise<MigrationResult> {
         db.prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)').run(
           2,
           'short_links_default_on',
+          new Date().toISOString(),
+        )
+        appliedVersion = 2
+      }
+      if (appliedVersion === 2) {
+        db.exec(migrationSql.get(3) as string)
+        db.prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)').run(
+          3,
+          'social_media_default_on',
           new Date().toISOString(),
         )
       }

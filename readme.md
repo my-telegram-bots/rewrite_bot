@@ -90,7 +90,9 @@ Messages beginning with the bot's exact `U+200C` marker are treated as output al
 
 ## Downloadable X/Twitter and Bluesky media
 
-When an inline query contains an exact X/Twitter or Bluesky post URL, the bot asks the public FxEmbed API v2 for post metadata. Each compatible original photo or progressive MP4/H.264 video is offered as a native Telegram inline result before the existing link-only utilities. Selecting a media result sends a photo or video that can be downloaded from Telegram; the bot does not proxy the full media file through its own memory or disk.
+When an inline query or directly sent text message contains an exact X/Twitter or Bluesky post URL, the bot asks the public FxEmbed API v2 for post metadata. Each compatible original photo or progressive MP4/H.264 video is offered as native Telegram media. Directly sent links receive a media reply; multi-photo/video posts use an album. Captions quote the post body and provide the author plus a localized original-post link. The bot does not proxy the full media file through its own memory or disk.
+
+The same persistent social-media parsing switch appears in personal and group `/settings` and defaults on. A personal switch also controls that user's inline results. Group changes require administrator status; disabling it suppresses FxEmbed calls without disabling ordinary URL cleanup.
 
 Only `api.fxtwitter.com` and `api.fxbsky.app` are contacted. Metadata requests reject redirects, time out after four seconds, and accept at most 512 KiB of JSON. The API receives the public post ID, a Bluesky handle when applicable, the bot server IP, and the application User-Agent; it does not receive the complete inline query or unrelated URLs. FxEmbed documents a public v2 rate limit of 1000 requests per minute per source IP, so one inline query resolves only its first supported post URL.
 
