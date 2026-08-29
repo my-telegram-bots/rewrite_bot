@@ -84,6 +84,7 @@ test('private /settings renders localized stable panel and callback persists thr
   })
   const panelCall = calls.find(({ method }) => method === 'sendMessage')!
   expect(panelCall.payload.text).toContain('个人设置')
+  expect(panelCall.payload.text).toContain('联网展开短链: 开')
   expect((panelCall.payload.reply_markup as { inline_keyboard: unknown[][] }).inline_keyboard.map((row) => row.length))
     .toEqual([1, 1, 1, 1])
 
@@ -98,7 +99,7 @@ test('private /settings renders localized stable panel and callback persists thr
     },
   })
   expect(calls.map(({ method }) => method)).toEqual(['editMessageText', 'answerCallbackQuery'])
-  expect(dbRepositories().getOrCreateUserSettings('7').expandShortUrls).toBe(true)
+  expect(dbRepositories().getOrCreateUserSettings('7').expandShortUrls).toBe(false)
 })
 
 test('group callback rechecks administrator status before every mutation', async () => {

@@ -32,7 +32,7 @@ test('upserts defaults, validates IDs, rolls back bad patches, and persists sett
   let repositories = new Repositories(db)
   const initial = repositories.getOrCreateUserSettings('90071992547409931')
   expect(initial).toMatchObject({
-    userId: '90071992547409931', cleanupEnabled: true, expandShortUrls: false,
+    userId: '90071992547409931', cleanupEnabled: true, expandShortUrls: true,
     removeReferralMarketing: false, hidePlaceholders: ['█', '❔', '❓'],
   })
   repositories.getOrCreateUserSettings('90071992547409931')
@@ -45,8 +45,10 @@ test('upserts defaults, validates IDs, rolls back bad patches, and persists sett
     hideMode: 2,
     hidePlaceholders: ['秘'],
   })
-  expect(repositories.getOrCreateChatSettings('-1001234567890123')).toMatchObject({ mode: 'replace', cleanupEnabled: true })
-  repositories.updateChatSettings('-1001234567890123', { mode: 'reply', expandShortUrls: true })
+  expect(repositories.getOrCreateChatSettings('-1001234567890123')).toMatchObject({
+    mode: 'replace', cleanupEnabled: true, expandShortUrls: true,
+  })
+  repositories.updateChatSettings('-1001234567890123', { mode: 'reply', expandShortUrls: false })
   db.close()
 
   db = openDatabase(DB_PATH, true)
@@ -55,7 +57,7 @@ test('upserts defaults, validates IDs, rolls back bad patches, and persists sett
     cleanupEnabled: false, expandShortUrls: true, removeReferralMarketing: true,
     hideMode: 2, hidePlaceholders: ['秘'],
   })
-  expect(repositories.getOrCreateChatSettings('-1001234567890123')).toMatchObject({ mode: 'reply', expandShortUrls: true })
+  expect(repositories.getOrCreateChatSettings('-1001234567890123')).toMatchObject({ mode: 'reply', expandShortUrls: false })
   repositories.createHiddenNormalMessage({
     id: 'normal-created', userId: '90071992547409931', messageId: '90071992547409932',
     messageType: 2, text: 'persist me', time: 123,

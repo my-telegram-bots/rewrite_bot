@@ -12,6 +12,7 @@ test('release start command and copied migration match the compiled source layou
   expect(copyScript).toContain("resolve('dist/src/db/migrations')")
   expect(copyScript).toContain("resolve('dist/src/app.js')")
   expect(existsSync(resolve(__dirname, '..', 'src', 'db', 'migrations', '001_canonical_schema.sql'))).toBe(true)
+  expect(existsSync(resolve(__dirname, '..', 'src', 'db', 'migrations', '002_short_links_default_on.sql'))).toBe(true)
 })
 
 test('systemd deployment loads env and gates compiled startup on migration and checks', () => {

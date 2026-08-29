@@ -71,7 +71,7 @@ test('migrates all legacy data exactly, creates a backup, and is idempotent', as
   expect(db.prepare('SELECT COUNT(*) AS count FROM hidden_normal_messages').get()).toEqual({ count: 2 })
   expect(db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get('9007199254740993')).toMatchObject({
     hide_mode: 2, hide_disabled: 'legacy-disabled-value', expired_time_offset: 3600,
-    cleanup_enabled: 1, expand_short_urls: 0, remove_referral_marketing: 0,
+    cleanup_enabled: 1, expand_short_urls: 1, remove_referral_marketing: 0,
   })
   expect(db.prepare('SELECT placeholder FROM user_hide_placeholders WHERE user_id = ? ORDER BY position').all('9007199254740993'))
     .toEqual([{ placeholder: '█' }, { placeholder: '疑問' }])
@@ -79,9 +79,47 @@ test('migrates all legacy data exactly, creates a backup, and is idempotent', as
     .toEqual([{ placeholder: '█' }, { placeholder: '❔' }, { placeholder: '❓' }])
   expect(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('hideMessage','hideNormalMessage','userSetting')").all())
     .toHaveLength(0)
+  expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all())
+    .toEqual([{ version: 1 }, { version: 2 }])
   db.close()
 
-  await expect(migrateDatabase(path)).resolves.toEqual({ migrated: false, version: 1 })
+  await expect(migrateDatabase(path)).resolves.toEqual({ migrated: false, version: 2 })
+})
+
+test('upgrades v1 defaults without overwriting existing short-link choices', async () => {
+  const path = join(TEST_ROOT, 'canonical-v1.db')
+  const db = new Database(path)
+  const migrationV1 = require('fs').readFileSync(
+    join(__dirname, '..', 'src', 'db', 'migrations', '001_canonical_schema.sql'),
+    'utf8',
+  ) as string
+  db.exec(migrationV1)
+  db.prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (1, ?, ?)')
+    .run('canonical_sqlite_v1', '2026-08-29T00:00:00.000Z')
+  db.prepare('INSERT INTO user_settings (user_id, expand_short_urls) VALUES (?, ?)').run('10', 0)
+  db.prepare('INSERT INTO user_settings (user_id, expand_short_urls) VALUES (?, ?)').run('11', 1)
+  db.prepare('INSERT INTO user_hide_placeholders VALUES (?, ?, ?)').run('10', 0, '█')
+  db.prepare('INSERT INTO chat_settings (chat_id, expand_short_urls) VALUES (?, ?)').run('-10', 0)
+  db.close()
+
+  await expect(migrateDatabase(path)).resolves.toMatchObject({ migrated: true, version: 2 })
+  const upgraded = new Database(path)
+  expect(upgraded.prepare('SELECT user_id, expand_short_urls FROM user_settings ORDER BY user_id').all())
+    .toEqual([
+      { user_id: '10', expand_short_urls: 0 },
+      { user_id: '11', expand_short_urls: 1 },
+    ])
+  expect(upgraded.prepare('SELECT placeholder FROM user_hide_placeholders WHERE user_id = ?').all('10'))
+    .toEqual([{ placeholder: '█' }])
+  expect(upgraded.prepare('SELECT expand_short_urls FROM chat_settings WHERE chat_id = ?').get('-10'))
+    .toEqual({ expand_short_urls: 0 })
+  upgraded.prepare('INSERT INTO user_settings (user_id) VALUES (?)').run('12')
+  upgraded.prepare('INSERT INTO chat_settings (chat_id) VALUES (?)').run('-12')
+  expect(upgraded.prepare('SELECT expand_short_urls FROM user_settings WHERE user_id = ?').get('12'))
+    .toEqual({ expand_short_urls: 1 })
+  expect(upgraded.prepare('SELECT expand_short_urls FROM chat_settings WHERE chat_id = ?').get('-12'))
+    .toEqual({ expand_short_urls: 1 })
+  upgraded.close()
 })
 
 test('rolls back the schema switch when legacy normalization fails', async () => {
