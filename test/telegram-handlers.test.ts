@@ -142,6 +142,87 @@ test('inline query returns cleaned URL output through the grammY pipeline', asyn
     .toBe('https://example.com/x')
 })
 
+test('inline query resolves a Bluesky post into native downloadable media before link utilities', async () => {
+  const originalFetch = global.fetch
+  const fetchMock = jest.fn(async () => new Response(JSON.stringify({
+    code: 200,
+    status: {
+      type: 'status', provider: 'bluesky', url: 'https://bsky.app/profile/bsky.app/post/3l3vgf77uco2g',
+      text: '帖子 😀', author: { name: 'Bluesky', screen_name: 'bsky.app' },
+      media: { all: [{
+        type: 'video', format: 'video/mp4',
+        url: 'https://pds-cache.fxbsky.app/video',
+        thumbnail_url: 'https://video.bsky.app/thumb.jpg', width: 1920, height: 1080, duration: 3,
+        formats: [{ container: 'mp4', codec: 'h264', url: 'https://pds-cache.fxbsky.app/video' }],
+      }] },
+    },
+  }), { headers: { 'content-type': 'application/json' } }))
+  global.fetch = fetchMock as typeof fetch
+  try {
+    const { bot } = await import('../src/bot')
+    await bot.handleUpdate({
+      update_id: 7,
+      inline_query: {
+        id: 'inline-media', offset: '', query: '😀 https://bsky.app/profile/bsky.app/post/3l3vgf77uco2g',
+        from: { id: 10, is_bot: false, first_name: 'Media', language_code: 'zh-CN' },
+      },
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.fxbsky.app/2/status/bsky.app/3l3vgf77uco2g',
+      expect.objectContaining({ method: 'GET', redirect: 'error' }),
+    )
+    const answer = calls.find(({ method }) => method === 'answerInlineQuery')!
+    const results = answer.payload.results as Array<Record<string, unknown>>
+    expect(results[0]).toMatchObject({
+      id: 'media-video-1', type: 'video', video_url: 'https://pds-cache.fxbsky.app/video',
+      mime_type: 'video/mp4', title: '下载视频 1/1',
+    })
+    expect((results[0].caption as string).startsWith('\u200C')).toBe(true)
+    expect(results[1]).toMatchObject({ id: 'fxbluesky-link', type: 'article', title: '通过 fxbsky 发送' })
+    expect(results[1].input_message_content).toMatchObject({
+      message_text: expect.stringMatching(/^\u200C/),
+      entities: [{
+        type: 'text_link', offset: 0, length: 1,
+        url: 'https://fxbsky.app/profile/bsky.app/post/3l3vgf77uco2g',
+      }],
+    })
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+test('mixed-text Twitter inline variants begin with the one processed marker', async () => {
+  const originalFetch = global.fetch
+  global.fetch = jest.fn(async () => new Response(JSON.stringify({
+    code: 200,
+    status: {
+      type: 'status', provider: 'twitter', text: 'no media',
+      media: { all: [] },
+    },
+  }), { headers: { 'content-type': 'application/json' } })) as typeof fetch
+  try {
+    const { bot } = await import('../src/bot')
+    await bot.handleUpdate({
+      update_id: 8,
+      inline_query: {
+        id: 'inline-twitter-marker', offset: '', query: 'look 😀 https://x.com/user/status/1234567890',
+        from: { id: 11, is_bot: false, first_name: 'Marker', language_code: 'en' },
+      },
+    })
+    const answer = calls.find(({ method }) => method === 'answerInlineQuery')!
+    const results = answer.payload.results as Array<{
+      id: string
+      input_message_content: { message_text: string }
+    }>
+    expect(results.find(({ id }) => id === 'fxtwitter-link')?.input_message_content.message_text.startsWith('\u200C'))
+      .toBe(true)
+    expect(results.find(({ id }) => id === 'vxtwitter-link')?.input_message_content.message_text.startsWith('\u200C'))
+      .toBe(true)
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
 test('message beginning with the bot zero-width marker bypasses URL cleanup', async () => {
   const { bot } = await import('../src/bot')
   const markedUrl = '\u200Chttps://example.com/x?utm_source=test'

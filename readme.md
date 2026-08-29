@@ -1,6 +1,6 @@
 # rewrite_bot
 
-rewrite_bot is a grammY-based Telegram utility bot for removing tracking data from links, safely expanding approved short links, and hiding text.
+rewrite_bot is a grammY-based Telegram utility bot for removing tracking data from links, safely expanding approved short links, exposing downloadable X/Twitter and Bluesky media, and hiding text.
 
 ## Runtime
 
@@ -87,6 +87,12 @@ The exact allowlist includes common generic services (for example Bitly, TinyURL
 The bot stores text only when the user invokes hidden-message functionality. Stored data includes the hidden content, Telegram user ID, counters, status, and expiry needed to deliver that feature. User and chat settings are stored persistently. Full URLs are not written to application logs. `/clean` deletes the caller's hidden inline messages.
 
 Messages beginning with the bot's exact `U+200C` marker are treated as output already produced by the bot and bypass URL cleanup and short-link expansion. Other zero-width characters do not trigger this bypass.
+
+## Downloadable X/Twitter and Bluesky media
+
+When an inline query contains an exact X/Twitter or Bluesky post URL, the bot asks the public FxEmbed API v2 for post metadata. Each compatible original photo or progressive MP4/H.264 video is offered as a native Telegram inline result before the existing link-only utilities. Selecting a media result sends a photo or video that can be downloaded from Telegram; the bot does not proxy the full media file through its own memory or disk.
+
+Only `api.fxtwitter.com` and `api.fxbsky.app` are contacted. Metadata requests reject redirects, time out after four seconds, and accept at most 512 KiB of JSON. The API receives the public post ID, a Bluesky handle when applicable, the bot server IP, and the application User-Agent; it does not receive the complete inline query or unrelated URLs. FxEmbed documents a public v2 rate limit of 1000 requests per minute per source IP, so one inline query resolves only its first supported post URL.
 
 ## ClearURLs attribution
 

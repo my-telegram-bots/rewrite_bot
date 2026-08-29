@@ -4,6 +4,7 @@ import { bot } from '../bot'
 import { dbRepositories } from '../db'
 import { hide_message } from '../handlers/hide_message'
 import sqlit_character from '../handlers/sqlit_character'
+import { findFirstSocialPost, resolveSocialMedia, socialMediaInlineResults } from '../media'
 import { cleanUrlsInText, expandShortUrl } from '../url'
 
 function article(id: string, title: string, text: string): InlineQueryResult {
@@ -18,7 +19,7 @@ function article(id: string, title: string, text: string): InlineQueryResult {
 
 function twitterVariants(text: string, fxtwitterTitle: string, vxtwitterTitle: string): InlineQueryResult[] {
   if (!text.includes('https://twitter.com/')) return []
-  const display = text.replaceAll('https://twitter.com/', '\u200Chttps://twitter.com/')
+  const display = `\u200C${text.replaceAll('https://twitter.com/', '\u200Chttps://twitter.com/')}`
   const entities: MessageEntity[] = []
   for (const match of display.matchAll(/\u200C(https:\/\/twitter\.com\/[^\s<>]+)/gu)) {
     entities.push({
@@ -43,6 +44,24 @@ function twitterVariants(text: string, fxtwitterTitle: string, vxtwitterTitle: s
   ]
 }
 
+function blueskyVariant(
+  text: string,
+  reference: Extract<ReturnType<typeof findFirstSocialPost>, { provider: 'bluesky' }>,
+  title: string,
+): InlineQueryResult {
+  const target = `https://fxbsky.app/profile/${encodeURIComponent(reference.handle)}/post/${encodeURIComponent(reference.rkey)}`
+  return {
+    id: 'fxbluesky-link',
+    type: 'article',
+    title,
+    description: text.slice(0, 64),
+    input_message_content: {
+      message_text: `\u200C${text}`,
+      entities: [{ type: 'text_link', offset: 0, length: 1, url: target }],
+    },
+  }
+}
+
 bot.on('inline_query', async (ctx) => {
   const text = ctx.inlineQuery.query
   if (!text || text.startsWith('!s ')) {
@@ -62,11 +81,18 @@ bot.on('inline_query', async (ctx) => {
     redirectResolver: settings.expandShortUrls ? expandShortUrl : undefined,
   })
   const normalizedTwitter = cleaned.replaceAll('https://x.com/', 'https://twitter.com/')
-  const results: InlineQueryResult[] = twitterVariants(
+  const reference = findFirstSocialPost(cleaned)
+  const results: InlineQueryResult[] = reference
+    ? socialMediaInlineResults(await resolveSocialMedia(reference), ctx.t)
+    : []
+  results.push(...twitterVariants(
     normalizedTwitter,
     ctx.t('inline-fxtwitter-title'),
     ctx.t('inline-vxtwitter-title'),
-  )
+  ))
+  if (reference?.provider === 'bluesky') {
+    results.push(blueskyVariant(cleaned, reference, ctx.t('inline-fxbluesky-title')))
+  }
   if (cleaned !== text) results.push(article('clean-url', ctx.t('inline-clean-title'), cleaned))
   results.push(...await hide_message({ text, mode: 'inline', type: 1 }, settings, ctx.t))
   const split = sqlit_character(text)

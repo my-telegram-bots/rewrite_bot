@@ -34,8 +34,18 @@ This document is the release contract for the SQLite and URL-cleaning migration.
 - Telegram text is rebuilt from UTF-16 entity offsets without concurrent mutation. Emoji, multiple URLs, repeated URLs, mixed formatting, and `text_link` targets remain valid.
 - URL-cleaning results are structured. Logs and user-facing diagnostics never contain complete sensitive URLs.
 
+## Downloadable social media
+
+- Inline queries recognize exact public post URLs on `twitter.com`, `x.com`, and `bsky.app`. Similar-looking hosts, profile URLs, malformed identifiers, and arbitrary URLs never trigger a metadata request.
+- The first supported post URL in one inline query is resolved through the public FxEmbed API v2: `api.fxtwitter.com/2/status/{id}` for X/Twitter and `api.fxbsky.app/2/status/{handle}/{rkey}` for Bluesky.
+- Metadata requests use only those fixed HTTPS origins, identify this application, reject redirects, time out after four seconds, and read at most 512 KiB of JSON. They never download the media bytes into the bot process.
+- Original photos and Telegram-compatible progressive MP4/H.264 videos become native inline media results ahead of link-only variants. Selecting one sends a Telegram photo or video that the recipient can download. Multi-media posts expose one selectable result per original item; mosaics, external player cards, HLS playlists, and incompatible video codecs are not substituted for originals.
+- A lookup failure or a valid post without compatible downloadable media leaves all existing inline utilities available and adds a localized result that says what failed, why it may have failed, and what the user can do next, with stable code `MEDIA_LOOKUP_FAILED` or `MEDIA_NOT_FOUND`.
+- The FxEmbed request necessarily discloses the public post identifier (and Bluesky handle) plus the bot server IP and User-Agent to the selected API service. Complete user query text and unrelated URLs are never sent.
+
 ## Acceptance
 
 - Migration is tested from an untouched legacy three-table fixture, including large Telegram identifiers, Unicode, statuses, timestamps, settings, normal-message data, rollback, and idempotent rerun.
 - Tests cover repository constraints and persistence, hide-message consumption and expiry, ClearURLs behavior and snapshot integrity, SSRF rejection, UTF-16 entity rebuilding, settings authorization, and replace/reply/off fallback behavior.
+- Tests cover exact social-post URL recognition, fixed API endpoints, timeout/redirect/body limits, malformed and failed payloads, media ordering, compatible video selection, localized failure results, and real grammY inline-query output construction.
 - Release validation includes build, full tests, database checks, a repository-wide forbidden-pattern audit, and bot startup against a migrated database. Telegram live acceptance is reported separately and is never claimed without credentials and actual private/group requests.

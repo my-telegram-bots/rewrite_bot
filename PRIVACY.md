@@ -9,5 +9,6 @@ rewrite_bot processes Telegram updates to provide link cleaning and text utiliti
 - User and group settings are stored persistently in SQLite. Telegram IDs are stored as decimal text.
 - `/clean` deletes the caller's hidden inline messages. Group administrators control group settings through `/settings`.
 - ClearURLs rules are a bundled local data asset and are never downloaded while the bot is running.
+- When an inline query contains an X/Twitter or Bluesky post URL, the bot sends only the public post identifier and, for Bluesky, its public handle to the corresponding FxEmbed metadata API. FxEmbed also receives the bot server IP and application User-Agent. The full inline query, unrelated URLs, Telegram user ID, and hidden-message text are not sent. Media files are fetched by Telegram from the public media URL; they are not downloaded into this bot's database or filesystem.
 
 Operators are responsible for protecting the SQLite database and its migration backups, restricting filesystem access, and deleting backups according to their retention policy after release acceptance.
