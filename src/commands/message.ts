@@ -4,7 +4,12 @@ import { ChatMode, dbRepositories } from '../db'
 import { deliverSocialMedia, findFirstSocialPost, MediaDeliveryApi, resolveSocialMedia } from '../media'
 import { cleanTelegramEntities, expandShortUrl } from '../url'
 import { Translator } from '../context'
-import { deliverCleanedMessage, DeliveryApi, shouldCleanMessage } from '../telegram/delivery'
+import {
+  deleteOriginalAfterDelivery,
+  deliverCleanedMessage,
+  DeliveryApi,
+  shouldCleanMessage,
+} from '../telegram/delivery'
 import { startsWithProcessedMarker } from '../telegram/processed-marker'
 
 async function handleTextMessage(
@@ -34,7 +39,7 @@ async function handleTextMessage(
     .find(Boolean)
   const reference = settings.socialMediaEnabled ? findFirstSocialPost(result.text) || linkedReference : undefined
   if (reference) {
-    await deliverSocialMedia(
+    const delivery = await deliverSocialMedia(
       api,
       chatId,
       message.message_id,
@@ -42,6 +47,9 @@ async function handleTextMessage(
       t,
       settings.multiImageMode,
     )
+    if (delivery === 'sent' && !isPrivate && mode === 'replace') {
+      await deleteOriginalAfterDelivery(api, chatId, message.message_id, t)
+    }
     return
   }
   if (!result.changed) return

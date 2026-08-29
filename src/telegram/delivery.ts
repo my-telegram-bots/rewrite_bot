@@ -14,6 +14,23 @@ export function shouldCleanMessage(cleanupEnabled: boolean, mode: ChatMode): boo
   return cleanupEnabled && mode !== 'off'
 }
 
+export async function deleteOriginalAfterDelivery(
+  api: DeliveryApi,
+  chatId: number,
+  messageId: number,
+  t: Translator,
+): Promise<'replaced' | 'fallback'> {
+  try {
+    await api.deleteMessage(chatId, messageId)
+    return 'replaced'
+  } catch {
+    await api.sendMessage(chatId, `⚠️ ${t('delete-permission-fallback')}`, {
+      reply_parameters: { message_id: messageId, allow_sending_without_reply: true },
+    })
+    return 'fallback'
+  }
+}
+
 export async function deliverCleanedMessage(
   api: DeliveryApi,
   chatId: number,
@@ -28,15 +45,7 @@ export async function deliverCleanedMessage(
       entities,
       reply_parameters: { message_id: messageId, allow_sending_without_reply: true },
     })
-    try {
-      await api.deleteMessage(chatId, messageId)
-      return 'replaced'
-    } catch {
-      await api.sendMessage(chatId, `⚠️ ${t('delete-permission-fallback')}`, {
-        reply_parameters: { message_id: messageId, allow_sending_without_reply: true },
-      })
-      return 'fallback'
-    }
+    return deleteOriginalAfterDelivery(api, chatId, messageId, t)
   }
   await api.sendMessage(chatId, text, {
     entities,

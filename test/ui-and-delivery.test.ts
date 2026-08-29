@@ -1,6 +1,11 @@
 import type { ChatMember } from 'grammy/types'
 import { ChatSettings, UserSettings } from '../src/db'
-import { deliverCleanedMessage, DeliveryApi, shouldCleanMessage } from '../src/telegram/delivery'
+import {
+  deleteOriginalAfterDelivery,
+  deliverCleanedMessage,
+  DeliveryApi,
+  shouldCleanMessage,
+} from '../src/telegram/delivery'
 import { chatSettingsPanel, isAdministrator, userSettingsPanel } from '../src/ui/settings-panel'
 
 const t = (key: string, values: Record<string, string | number> = {}) =>
@@ -59,6 +64,21 @@ test('replace sends first, then deletes; delete failure keeps both messages and 
   await expect(deliverCleanedMessage(failed, -1, 5, 'clean', [], 'replace', t)).resolves.toBe('fallback')
   expect(failed.sendMessage).toHaveBeenCalledTimes(2)
   expect(failed.sendMessage.mock.calls[1][1]).toContain('delete-permission-fallback')
+})
+
+test('successful non-text delivery shares replace deletion and permission recovery', async () => {
+  const successful = api()
+  await expect(deleteOriginalAfterDelivery(successful, -1, 5, t)).resolves.toBe('replaced')
+  expect(successful.deleteMessage).toHaveBeenCalledWith(-1, 5)
+  expect(successful.sendMessage).not.toHaveBeenCalled()
+
+  const failed = api(true)
+  await expect(deleteOriginalAfterDelivery(failed, -1, 5, t)).resolves.toBe('fallback')
+  expect(failed.sendMessage).toHaveBeenCalledWith(
+    -1,
+    expect.stringContaining('delete-permission-fallback'),
+    { reply_parameters: { message_id: 5, allow_sending_without_reply: true } },
+  )
 })
 
 test('reply mode never deletes and keeps recovery adjacent through reply_parameters', async () => {

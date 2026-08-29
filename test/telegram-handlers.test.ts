@@ -10,6 +10,7 @@ const cleanup = () => rmSync(TEST_ROOT, { recursive: true, force: true })
 type ApiCall = { method: string; payload: Record<string, unknown> }
 const calls: ApiCall[] = []
 let memberStatus: 'member' | 'administrator' = 'member'
+let deleteFails = false
 
 beforeAll(async () => {
   cleanup()
@@ -63,6 +64,7 @@ beforeAll(async () => {
     if (method === 'sendAnimation') {
       return { ok: true, result: { message_id: 100, date: 1, chat: { id: capturedPayload.chat_id, type: 'private' }, animation: {} } } as never
     }
+    if (method === 'deleteMessage' && deleteFails) throw new Error('not enough rights')
     return { ok: true, result: true } as never
   })
   await import('../src/commands/index')
@@ -80,6 +82,7 @@ afterAll(async () => {
 beforeEach(() => {
   calls.length = 0
   memberStatus = 'member'
+  deleteFails = false
 })
 
 test('private /settings renders localized stable panel and callback persists through grammY', async () => {
@@ -355,7 +358,7 @@ test('inline query beginning with the bot zero-width marker also bypasses URL cl
     .toContain('u t m _ s o u r c e = t e s t')
 })
 
-test('direct X photo link resolves selected original media with quoted localized caption and retains original', async () => {
+test('group replace sends X media before deleting the original and explains deletion failure', async () => {
   const originalFetch = global.fetch
   const fetchMock = jest.fn(async () => new Response(JSON.stringify({
     code: 200,
@@ -382,7 +385,7 @@ test('direct X photo link resolves selected original media with quoted localized
       },
     })
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(calls.map(({ method }) => method)).toEqual(['sendPhoto'])
+    expect(calls.map(({ method }) => method)).toEqual(['sendPhoto', 'deleteMessage'])
     expect(calls[0].payload).toMatchObject({
       chat_id: -222,
       photo: 'https://pbs.twimg.com/media/one.jpg',
@@ -400,6 +403,25 @@ test('direct X photo link resolves selected original media with quoted localized
       },
       { type: 'text_link', offset: (calls[0].payload.caption as string).length - '查看原帖'.length, length: '查看原帖'.length, url },
     ])
+    expect(calls[1].payload).toMatchObject({ chat_id: -222, message_id: 40 })
+
+    calls.length = 0
+    deleteFails = true
+    await bot.handleUpdate({
+      update_id: 37,
+      message: {
+        message_id: 48, date: 1, text: url,
+        entities: [{ type: 'url', offset: 0, length: url.length }],
+        chat: { id: -222, type: 'supergroup', title: 'Media group' },
+        from: { id: 22, is_bot: false, first_name: 'Sender', language_code: 'zh-CN' },
+      },
+    })
+    expect(calls.map(({ method }) => method)).toEqual(['sendPhoto', 'deleteMessage', 'sendMessage'])
+    expect(calls[2].payload).toMatchObject({
+      chat_id: -222,
+      text: expect.stringContaining('URL_DELETE_PERMISSION'),
+      reply_parameters: { message_id: 48, allow_sending_without_reply: true },
+    })
   } finally {
     global.fetch = originalFetch
   }
