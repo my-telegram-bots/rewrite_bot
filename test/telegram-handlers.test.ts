@@ -140,3 +140,18 @@ test('inline query returns cleaned URL output through the grammY pipeline', asyn
   expect(results.find(({ id }) => id === 'clean-url')?.input_message_content.message_text)
     .toBe('https://example.com/x')
 })
+
+test('message beginning with the bot zero-width marker bypasses URL cleanup', async () => {
+  const { bot } = await import('../src/bot')
+  const markedUrl = '\u200Chttps://example.com/x?utm_source=test'
+  await bot.handleUpdate({
+    update_id: 6,
+    message: {
+      message_id: 30, date: 1, text: markedUrl,
+      entities: [{ type: 'url', offset: 1, length: markedUrl.length - 1 }],
+      chat: { id: 9, type: 'private', first_name: 'Marked' },
+      from: { id: 9, is_bot: false, first_name: 'Marked', language_code: 'en' },
+    },
+  })
+  expect(calls).toEqual([])
+})

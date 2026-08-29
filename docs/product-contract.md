@@ -29,6 +29,7 @@ This document is the release contract for the SQLite and URL-cleaning migration.
 - Cleaning preserves path text, fragment text, surviving query order, duplicate values, empty values, and original encoding. It never applies a heuristic `decodeURIComponent` rewrite.
 - Network expansion is restricted to an explicit source-domain allowlist, follows at most five redirects, has strict timeout and body limits, and rejects credentials, loops, non-HTTP(S) targets, and private, loopback, link-local, multicast, or otherwise non-public addresses after every DNS resolution.
 - The allowlist covers explicitly named common generic, platform-owned, and East Asian short-link hosts. Matching is exact and never accepts arbitrary subdomains or suffixes; every addition requires a regression assertion.
+- An incoming Telegram text whose first code point is the bot's exact `U+200C` marker is treated as bot-processed output and bypasses URL cleanup, including local parameter removal and network short-link expansion. Other zero-width characters do not trigger this bypass.
 - Telegram text is rebuilt from UTF-16 entity offsets without concurrent mutation. Emoji, multiple URLs, repeated URLs, mixed formatting, and `text_link` targets remain valid.
 - URL-cleaning results are structured. Logs and user-facing diagnostics never contain complete sensitive URLs.
 

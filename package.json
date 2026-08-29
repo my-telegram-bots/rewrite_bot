@@ -6,8 +6,8 @@
   "author": "huggy",
   "scripts": {
     "dev": "ts-node ./src/app.ts",
-    "build": "tsc && node dist/scripts/copy-assets.js",
-    "start": "node dist/app.js",
+    "build": "ts-node ./scripts/build.ts",
+    "start": "node dist/src/app.js",
     "test": "jest --runInBand",
     "db:migrate": "ts-node ./src/db/cli-migrate.ts",
     "db:check": "ts-node ./src/db/cli-check.ts",

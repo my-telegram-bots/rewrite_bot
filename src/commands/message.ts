@@ -4,6 +4,7 @@ import { ChatMode, dbRepositories } from '../db'
 import { cleanTelegramEntities, expandShortUrl } from '../url'
 import { Translator } from '../context'
 import { deliverCleanedMessage, DeliveryApi, shouldCleanMessage } from '../telegram/delivery'
+import { startsWithProcessedMarker } from '../telegram/processed-marker'
 
 async function handleTextMessage(
   api: DeliveryApi,
@@ -12,6 +13,7 @@ async function handleTextMessage(
   t: Translator,
   privateUserId?: number,
 ): Promise<void> {
+  if (startsWithProcessedMarker(message.text)) return
   const isPrivate = privateUserId !== undefined
   const userSettings = isPrivate ? dbRepositories().getOrCreateUserSettings(privateUserId) : undefined
   const chatSettings = isPrivate ? undefined : dbRepositories().getOrCreateChatSettings(chatId)

@@ -58,6 +58,8 @@ The exact allowlist includes common generic services (for example Bitly, TinyURL
 
 The bot stores text only when the user invokes hidden-message functionality. Stored data includes the hidden content, Telegram user ID, counters, status, and expiry needed to deliver that feature. User and chat settings are stored persistently. Full URLs are not written to application logs. `/clean` deletes the caller's hidden inline messages.
 
+Messages beginning with the bot's exact `U+200C` marker are treated as output already produced by the bot and bypass URL cleanup and short-link expansion. Other zero-width characters do not trigger this bypass.
+
 ## ClearURLs attribution
 
 The rules data in `vendor/clearurls/` comes from [ClearURLs Rules](https://github.com/ClearURLs/Rules), is pinned to the revision and SHA-256 listed in `vendor/clearurls/SOURCE.md`, and is licensed under LGPL-3.0. The upstream license is included at `vendor/clearurls/LICENSE`. This project treats the rules as a separately attributed release asset.
