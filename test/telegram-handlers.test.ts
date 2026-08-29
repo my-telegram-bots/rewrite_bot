@@ -237,3 +237,20 @@ test('message beginning with the bot zero-width marker bypasses URL cleanup', as
   })
   expect(calls).toEqual([])
 })
+
+test('inline query beginning with the bot zero-width marker also bypasses URL cleanup', async () => {
+  const { bot } = await import('../src/bot')
+  const markedUrl = '\u200Chttps://example.com/x?utm_source=test'
+  await bot.handleUpdate({
+    update_id: 9,
+    inline_query: {
+      id: 'inline-marked', offset: '', query: markedUrl,
+      from: { id: 12, is_bot: false, first_name: 'Marked', language_code: 'en' },
+    },
+  })
+  const answer = calls.find(({ method }) => method === 'answerInlineQuery')!
+  const results = answer.payload.results as Array<{ id: string; input_message_content: { message_text: string } }>
+  expect(results.find(({ id }) => id === 'clean-url')).toBeUndefined()
+  expect(results.find(({ id }) => id === 'split-character')?.input_message_content.message_text)
+    .toContain('u t m _ s o u r c e = t e s t')
+})

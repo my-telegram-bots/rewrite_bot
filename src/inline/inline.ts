@@ -5,6 +5,7 @@ import { dbRepositories } from '../db'
 import { hide_message } from '../handlers/hide_message'
 import sqlit_character from '../handlers/sqlit_character'
 import { findFirstSocialPost, resolveSocialMedia, socialMediaInlineResults } from '../media'
+import { startsWithProcessedMarker } from '../telegram/processed-marker'
 import { cleanUrlsInText, expandShortUrl } from '../url'
 
 function article(id: string, title: string, text: string): InlineQueryResult {
@@ -75,11 +76,13 @@ bot.on('inline_query', async (ctx) => {
     return
   }
   const settings = dbRepositories().getOrCreateUserSettings(ctx.from.id)
-  const cleaned = await cleanUrlsInText(text, {
-    removeReferralMarketing: settings.removeReferralMarketing,
-    expandShortUrls: settings.expandShortUrls,
-    redirectResolver: settings.expandShortUrls ? expandShortUrl : undefined,
-  })
+  const cleaned = startsWithProcessedMarker(text)
+    ? text
+    : await cleanUrlsInText(text, {
+      removeReferralMarketing: settings.removeReferralMarketing,
+      expandShortUrls: settings.expandShortUrls,
+      redirectResolver: settings.expandShortUrls ? expandShortUrl : undefined,
+    })
   const normalizedTwitter = cleaned.replaceAll('https://x.com/', 'https://twitter.com/')
   const reference = findFirstSocialPost(cleaned)
   const results: InlineQueryResult[] = reference
