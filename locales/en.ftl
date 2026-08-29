@@ -52,6 +52,7 @@ inline-fxbluesky-title = Send as fxbsky
 inline-media-photo-title = Download photo { $position }/{ $total }
 inline-media-video-title = Download video { $position }/{ $total }
 inline-media-gif-title = Download animation { $position }/{ $total }
+inline-media-combined-title = Download combined image
 inline-media-failed-title = Media lookup failed
 inline-media-failed-body = Could not load media information from FxEmbed because the service timed out or rejected the lookup. Try again later or use the link-only result. [MEDIA_LOOKUP_FAILED]
 inline-media-not-found-title = No downloadable media found

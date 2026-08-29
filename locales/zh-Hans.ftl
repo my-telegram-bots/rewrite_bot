@@ -52,6 +52,7 @@ inline-fxbluesky-title = 通过 fxbsky 发送
 inline-media-photo-title = 下载图片 { $position }/{ $total }
 inline-media-video-title = 下载视频 { $position }/{ $total }
 inline-media-gif-title = 下载动画 { $position }/{ $total }
+inline-media-combined-title = 下载合并图片
 inline-media-failed-title = 媒体解析失败
 inline-media-failed-body = 无法从 FxEmbed 读取媒体信息：服务超时或拒绝了本次查询。请稍后重试，或使用下方的纯链接结果。[MEDIA_LOOKUP_FAILED]
 inline-media-not-found-title = 未找到可下载媒体

@@ -243,8 +243,20 @@ test('mixed-text Twitter inline variants begin with the one processed marker', a
   global.fetch = jest.fn(async () => new Response(JSON.stringify({
     code: 200,
     status: {
-      type: 'status', provider: 'twitter', text: 'no media',
-      media: { all: [] },
+      type: 'status', provider: 'twitter', text: 'two images',
+      media: {
+        all: [
+          { type: 'photo', url: 'https://pbs.twimg.com/media/inline-one.jpg', width: 100, height: 200 },
+          { type: 'photo', url: 'https://pbs.twimg.com/media/inline-two.jpg', width: 100, height: 200 },
+        ],
+        mosaic: {
+          type: 'mosaic_photo',
+          formats: {
+            jpeg: 'https://mosaic.fxtwitter.com/jpeg/1234567890/one/two',
+            webp: 'https://mosaic.fxtwitter.com/webp/1234567890/one/two',
+          },
+        },
+      },
     },
   }), { headers: { 'content-type': 'application/json' } })) as typeof fetch
   try {
@@ -265,6 +277,11 @@ test('mixed-text Twitter inline variants begin with the one processed marker', a
       .toBe(true)
     expect(results.find(({ id }) => id === 'vxtwitter-link')?.input_message_content.message_text.startsWith('\u200C'))
       .toBe(true)
+    expect(results.find(({ id }) => id === 'media-combined')).toMatchObject({
+      type: 'photo',
+      photo_url: 'https://mosaic.fxtwitter.com/jpeg/1234567890/one/two',
+      title: 'Download combined image',
+    })
   } finally {
     global.fetch = originalFetch
   }

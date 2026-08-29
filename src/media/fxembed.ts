@@ -39,6 +39,7 @@ export interface ResolvedSocialPost {
   authorName?: string
   authorHandle?: string
   media: ResolvedMedia[]
+  combinedImage?: ResolvedPhoto
 }
 
 export type SocialMediaResolution =
@@ -132,6 +133,23 @@ function mediaFromStatus(status: JsonRecord, provider: SocialProvider): Resolved
   return results
 }
 
+function combinedImageFromStatus(status: JsonRecord, provider: SocialProvider): ResolvedPhoto | undefined {
+  if (provider !== 'twitter') return undefined
+  const media = record(status.media)
+  const mosaic = record(media?.mosaic)
+  const formats = record(mosaic?.formats)
+  if (!mosaic || mosaic.type !== 'mosaic_photo' || typeof formats?.jpeg !== 'string') return undefined
+  try {
+    const url = new URL(formats.jpeg)
+    if (url.protocol !== 'https:' || url.username || url.password || url.port ||
+      url.hostname.toLowerCase() !== 'mosaic.fxtwitter.com') return undefined
+    const photoCount = mediaFromStatus(status, provider).filter((item) => item.kind === 'photo').length
+    return photoCount >= 2 ? { kind: 'photo', url: url.href } : undefined
+  } catch {
+    return undefined
+  }
+}
+
 function selectedMedia(media: ResolvedMedia[], reference: SocialPostReference): ResolvedMedia[] {
   if (!reference.selection) return media
   const matching = media.filter((item) => reference.selection?.kind === 'photo'
@@ -192,6 +210,7 @@ export async function resolveSocialMedia(
     if (!payload || payload.code !== 200 || !status || status.type !== 'status') return { state: 'not_found' }
     const provider = status.provider === reference.provider ? reference.provider : undefined
     if (!provider) return { state: 'failed' }
+    const media = selectedMedia(mediaFromStatus(status, provider), reference)
     return {
       state: 'ok',
       post: {
@@ -202,7 +221,8 @@ export async function resolveSocialMedia(
         authorHandle: typeof record(status.author)?.screen_name === 'string'
           ? record(status.author)?.screen_name as string
           : undefined,
-        media: selectedMedia(mediaFromStatus(status, provider), reference),
+        media,
+        combinedImage: reference.selection ? undefined : combinedImageFromStatus(status, provider),
       },
     }
   } catch {

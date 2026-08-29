@@ -35,9 +35,9 @@ export function socialMediaInlineResults(
     }]
   }
   const total = resolution.post.media.length
-  return resolution.post.media.map((media, index): InlineQueryResult => {
+  const mediaCaption = buildMediaCaption(resolution.post, t)
+  const results = resolution.post.media.map((media, index): InlineQueryResult => {
     const position = index + 1
-    const mediaCaption = buildMediaCaption(resolution.post, t)
     const common = {
       id: `media-${media.kind}-${position}`,
       title: t(media.kind === 'photo' ? 'inline-media-photo-title' : media.kind === 'gif'
@@ -80,4 +80,17 @@ export function socialMediaInlineResults(
       video_duration: media.duration ? Math.ceil(media.duration) : undefined,
     }
   })
+  if (resolution.post.combinedImage) {
+    results.push({
+      id: 'media-combined',
+      type: 'photo',
+      title: t('inline-media-combined-title'),
+      description: '',
+      photo_url: resolution.post.combinedImage.url,
+      thumbnail_url: resolution.post.combinedImage.url,
+      caption: mediaCaption.text,
+      caption_entities: mediaCaption.entities,
+    })
+  }
+  return results
 }

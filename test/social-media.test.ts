@@ -61,7 +61,13 @@ test('preserves media order, selects highest compatible MP4/H.264, and rejects u
           ],
         },
         { type: 'photo', url: 'https://evil.test/not-media.jpg', width: 10, height: 10 },
-      ] },
+      ], mosaic: {
+        type: 'mosaic_photo',
+        formats: {
+          jpeg: 'https://mosaic.fxtwitter.com/jpeg/1234567890/photo-a/photo-b',
+          webp: 'https://mosaic.fxtwitter.com/webp/1234567890/photo-a/photo-b',
+        },
+      } },
     },
   }))
   const fetchImpl = fetchMock as typeof fetch
@@ -81,6 +87,47 @@ test('preserves media order, selects highest compatible MP4/H.264, and rejects u
       ],
     },
   })
+})
+
+test('offers a trusted FxTwitter JPEG mosaic without replacing original photos', async () => {
+  const reference = { provider: 'twitter', id: '1234567890', sourceUrl: 'https://x.com/a/status/1234567890' } as const
+  const response = (jpeg: string) => jsonResponse({
+    code: 200,
+    status: {
+      type: 'status', provider: 'twitter', text: 'two photos',
+      media: {
+        all: [
+          { type: 'photo', url: 'https://pbs.twimg.com/media/a.jpg' },
+          { type: 'photo', url: 'https://pbs.twimg.com/media/b.jpg' },
+        ],
+        mosaic: { type: 'mosaic_photo', formats: { jpeg, webp: 'https://mosaic.fxtwitter.com/webp/id/a/b' } },
+      },
+    },
+  })
+  const resolved = await resolveSocialMedia(reference, {
+    fetchImpl: (async () => response('https://mosaic.fxtwitter.com/jpeg/id/a/b')) as typeof fetch,
+  })
+  expect(resolved).toMatchObject({
+    state: 'ok',
+    post: {
+      media: [
+        { kind: 'photo', url: 'https://pbs.twimg.com/media/a.jpg' },
+        { kind: 'photo', url: 'https://pbs.twimg.com/media/b.jpg' },
+      ],
+      combinedImage: { kind: 'photo', url: 'https://mosaic.fxtwitter.com/jpeg/id/a/b' },
+    },
+  })
+  const results = socialMediaInlineResults(resolved, (key, values) => i18n.t('en', key, values))
+  expect(results.map(({ id }) => id)).toEqual(['media-photo-1', 'media-photo-2', 'media-combined'])
+  expect(results[2]).toMatchObject({
+    type: 'photo', title: 'Download combined image',
+    photo_url: 'https://mosaic.fxtwitter.com/jpeg/id/a/b',
+  })
+
+  const rejected = await resolveSocialMedia(reference, {
+    fetchImpl: (async () => response('https://evil.test/jpeg/id/a/b')) as typeof fetch,
+  })
+  expect(rejected).toMatchObject({ state: 'ok', post: { combinedImage: undefined } })
 })
 
 test('fails closed on oversized metadata, invalid content type, provider mismatch, and timeout', async () => {
