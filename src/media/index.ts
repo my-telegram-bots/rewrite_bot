@@ -1,3 +1,5 @@
 export * from './post-reference'
 export * from './fxembed'
 export * from './inline-results'
+export * from './caption'
+export * from './delivery'

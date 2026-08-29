@@ -33,7 +33,7 @@ test('upserts defaults, validates IDs, rolls back bad patches, and persists sett
   const initial = repositories.getOrCreateUserSettings('90071992547409931')
   expect(initial).toMatchObject({
     userId: '90071992547409931', cleanupEnabled: true, expandShortUrls: true,
-    removeReferralMarketing: false, hidePlaceholders: ['█', '❔', '❓'],
+    removeReferralMarketing: false, socialMediaEnabled: true, hidePlaceholders: ['█', '❔', '❓'],
   })
   repositories.getOrCreateUserSettings('90071992547409931')
   expect(() => repositories.updateUserSettings('90071992547409931', { hidePlaceholders: [] })).toThrow()
@@ -42,22 +42,28 @@ test('upserts defaults, validates IDs, rolls back bad patches, and persists sett
     cleanupEnabled: false,
     expandShortUrls: true,
     removeReferralMarketing: true,
+    socialMediaEnabled: false,
     hideMode: 2,
     hidePlaceholders: ['秘'],
   })
   expect(repositories.getOrCreateChatSettings('-1001234567890123')).toMatchObject({
-    mode: 'replace', cleanupEnabled: true, expandShortUrls: true,
+    mode: 'replace', cleanupEnabled: true, expandShortUrls: true, socialMediaEnabled: true,
   })
-  repositories.updateChatSettings('-1001234567890123', { mode: 'reply', expandShortUrls: false })
+  repositories.updateChatSettings('-1001234567890123', {
+    mode: 'reply', expandShortUrls: false, socialMediaEnabled: false,
+  })
   db.close()
 
   db = openDatabase(DB_PATH, true)
   repositories = new Repositories(db)
   expect(repositories.getOrCreateUserSettings('90071992547409931')).toMatchObject({
     cleanupEnabled: false, expandShortUrls: true, removeReferralMarketing: true,
+    socialMediaEnabled: false,
     hideMode: 2, hidePlaceholders: ['秘'],
   })
-  expect(repositories.getOrCreateChatSettings('-1001234567890123')).toMatchObject({ mode: 'reply', expandShortUrls: false })
+  expect(repositories.getOrCreateChatSettings('-1001234567890123')).toMatchObject({
+    mode: 'reply', expandShortUrls: false, socialMediaEnabled: false,
+  })
   repositories.createHiddenNormalMessage({
     id: 'normal-created', userId: '90071992547409931', messageId: '90071992547409932',
     messageType: 2, text: 'persist me', time: 123,

@@ -1,22 +1,11 @@
 import type { InlineQueryResult } from 'grammy/types'
 import { Translator } from '../context'
+import { buildMediaCaption } from './caption'
 import { ResolvedSocialPost, SocialMediaResolution } from './fxembed'
-
-const PROCESSED_PREFIX = '\u200C'
 
 function truncate(value: string, limit: number): string {
   const points = Array.from(value)
   return points.length <= limit ? value : `${points.slice(0, Math.max(0, limit - 1)).join('')}…`
-}
-
-function caption(post: ResolvedSocialPost): string {
-  const author = post.authorName
-    ? `${post.authorName}${post.authorHandle ? ` (@${post.authorHandle})` : ''}`
-    : post.authorHandle ? `@${post.authorHandle}` : ''
-  const suffix = [author, post.sourceUrl].filter(Boolean).join('\n')
-  const available = Math.max(0, 1024 - PROCESSED_PREFIX.length - suffix.length - (suffix ? 2 : 0))
-  const body = truncate(post.text, available)
-  return `${PROCESSED_PREFIX}${body}${suffix ? `\n\n${suffix}` : ''}`.slice(0, 1024)
 }
 
 function dimensions(width?: number, height?: number): string {
@@ -48,13 +37,15 @@ export function socialMediaInlineResults(
   const total = resolution.post.media.length
   return resolution.post.media.map((media, index): InlineQueryResult => {
     const position = index + 1
+    const mediaCaption = buildMediaCaption(resolution.post, t)
     const common = {
       id: `media-${media.kind}-${position}`,
       title: t(media.kind === 'photo' ? 'inline-media-photo-title' : media.kind === 'gif'
         ? 'inline-media-gif-title'
         : 'inline-media-video-title', { position, total }),
       description: dimensions(media.width, media.height),
-      caption: caption(resolution.post),
+      caption: mediaCaption.text,
+      caption_entities: mediaCaption.entities,
     }
     if (media.kind === 'photo') {
       return {

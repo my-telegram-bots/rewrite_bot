@@ -1,13 +1,14 @@
 import type { Message, MessageEntity } from 'grammy/types'
 import { bot } from '../bot';
 import { ChatMode, dbRepositories } from '../db'
+import { deliverSocialMedia, findFirstSocialPost, MediaDeliveryApi, resolveSocialMedia } from '../media'
 import { cleanTelegramEntities, expandShortUrl } from '../url'
 import { Translator } from '../context'
 import { deliverCleanedMessage, DeliveryApi, shouldCleanMessage } from '../telegram/delivery'
 import { startsWithProcessedMarker } from '../telegram/processed-marker'
 
 async function handleTextMessage(
-  api: DeliveryApi,
+  api: DeliveryApi & MediaDeliveryApi,
   chatId: number,
   message: Message.TextMessage,
   t: Translator,
@@ -19,12 +20,19 @@ async function handleTextMessage(
   const chatSettings = isPrivate ? undefined : dbRepositories().getOrCreateChatSettings(chatId)
   const settings = userSettings || chatSettings!
   const mode: ChatMode = userSettings ? 'reply' : chatSettings!.mode
-  if (!shouldCleanMessage(settings.cleanupEnabled, mode)) return
-  const result = await cleanTelegramEntities(message.text, message.entities || [], {
-    removeReferralMarketing: settings.removeReferralMarketing,
-    expandShortUrls: settings.expandShortUrls,
-    redirectResolver: settings.expandShortUrls ? expandShortUrl : undefined,
-  })
+  const shouldClean = shouldCleanMessage(settings.cleanupEnabled, mode)
+  const result = shouldClean
+    ? await cleanTelegramEntities(message.text, message.entities || [], {
+      removeReferralMarketing: settings.removeReferralMarketing,
+      expandShortUrls: settings.expandShortUrls,
+      redirectResolver: settings.expandShortUrls ? expandShortUrl : undefined,
+    })
+    : { text: message.text, entities: message.entities || [], changed: false, urls: [] }
+  const reference = settings.socialMediaEnabled ? findFirstSocialPost(result.text) : undefined
+  if (reference) {
+    await deliverSocialMedia(api, chatId, message.message_id, await resolveSocialMedia(reference), t)
+    return
+  }
   if (!result.changed) return
   await deliverCleanedMessage(
     api,

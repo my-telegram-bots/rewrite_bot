@@ -132,6 +132,15 @@ function mediaFromStatus(status: JsonRecord, provider: SocialProvider): Resolved
   return results
 }
 
+function selectedMedia(media: ResolvedMedia[], reference: SocialPostReference): ResolvedMedia[] {
+  if (!reference.selection) return media
+  const matching = media.filter((item) => reference.selection?.kind === 'photo'
+    ? item.kind === 'photo'
+    : item.kind === 'video' || item.kind === 'gif')
+  const selected = matching[reference.selection.index - 1]
+  return selected ? [selected] : []
+}
+
 async function readJsonLimited(response: Response, maxBodyBytes: number): Promise<unknown> {
   const declaredLength = Number(response.headers.get('content-length'))
   if (Number.isFinite(declaredLength) && declaredLength > maxBodyBytes) throw new Error('response too large')
@@ -193,7 +202,7 @@ export async function resolveSocialMedia(
         authorHandle: typeof record(status.author)?.screen_name === 'string'
           ? record(status.author)?.screen_name as string
           : undefined,
-        media: mediaFromStatus(status, provider),
+        media: selectedMedia(mediaFromStatus(status, provider), reference),
       },
     }
   } catch {

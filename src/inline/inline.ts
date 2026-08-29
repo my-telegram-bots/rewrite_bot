@@ -76,7 +76,8 @@ bot.on('inline_query', async (ctx) => {
     return
   }
   const settings = dbRepositories().getOrCreateUserSettings(ctx.from.id)
-  const cleaned = startsWithProcessedMarker(text)
+  const alreadyProcessed = startsWithProcessedMarker(text)
+  const cleaned = alreadyProcessed
     ? text
     : await cleanUrlsInText(text, {
       removeReferralMarketing: settings.removeReferralMarketing,
@@ -85,7 +86,7 @@ bot.on('inline_query', async (ctx) => {
     })
   const normalizedTwitter = cleaned.replaceAll('https://x.com/', 'https://twitter.com/')
   const reference = findFirstSocialPost(cleaned)
-  const results: InlineQueryResult[] = reference
+  const results: InlineQueryResult[] = reference && settings.socialMediaEnabled && !alreadyProcessed
     ? socialMediaInlineResults(await resolveSocialMedia(reference), ctx.t)
     : []
   results.push(...twitterVariants(

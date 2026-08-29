@@ -72,6 +72,7 @@ test('migrates all legacy data exactly, creates a backup, and is idempotent', as
   expect(db.prepare('SELECT * FROM user_settings WHERE user_id = ?').get('9007199254740993')).toMatchObject({
     hide_mode: 2, hide_disabled: 'legacy-disabled-value', expired_time_offset: 3600,
     cleanup_enabled: 1, expand_short_urls: 1, remove_referral_marketing: 0,
+    social_media_enabled: 1,
   })
   expect(db.prepare('SELECT placeholder FROM user_hide_placeholders WHERE user_id = ? ORDER BY position').all('9007199254740993'))
     .toEqual([{ placeholder: '█' }, { placeholder: '疑問' }])
@@ -80,10 +81,10 @@ test('migrates all legacy data exactly, creates a backup, and is idempotent', as
   expect(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('hideMessage','hideNormalMessage','userSetting')").all())
     .toHaveLength(0)
   expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all())
-    .toEqual([{ version: 1 }, { version: 2 }])
+    .toEqual([{ version: 1 }, { version: 2 }, { version: 3 }])
   db.close()
 
-  await expect(migrateDatabase(path)).resolves.toEqual({ migrated: false, version: 2 })
+  await expect(migrateDatabase(path)).resolves.toEqual({ migrated: false, version: 3 })
 })
 
 test('upgrades v1 defaults without overwriting existing short-link choices', async () => {
@@ -102,7 +103,7 @@ test('upgrades v1 defaults without overwriting existing short-link choices', asy
   db.prepare('INSERT INTO chat_settings (chat_id, expand_short_urls) VALUES (?, ?)').run('-10', 0)
   db.close()
 
-  await expect(migrateDatabase(path)).resolves.toMatchObject({ migrated: true, version: 2 })
+  await expect(migrateDatabase(path)).resolves.toMatchObject({ migrated: true, version: 3 })
   const upgraded = new Database(path)
   expect(upgraded.prepare('SELECT user_id, expand_short_urls FROM user_settings ORDER BY user_id').all())
     .toEqual([
@@ -119,6 +120,17 @@ test('upgrades v1 defaults without overwriting existing short-link choices', asy
     .toEqual({ expand_short_urls: 1 })
   expect(upgraded.prepare('SELECT expand_short_urls FROM chat_settings WHERE chat_id = ?').get('-12'))
     .toEqual({ expand_short_urls: 1 })
+  expect(upgraded.prepare('SELECT user_id, social_media_enabled FROM user_settings ORDER BY user_id').all())
+    .toEqual([
+      { user_id: '10', social_media_enabled: 1 },
+      { user_id: '11', social_media_enabled: 1 },
+      { user_id: '12', social_media_enabled: 1 },
+    ])
+  expect(upgraded.prepare('SELECT chat_id, social_media_enabled FROM chat_settings ORDER BY chat_id').all())
+    .toEqual([
+      { chat_id: '-10', social_media_enabled: 1 },
+      { chat_id: '-12', social_media_enabled: 1 },
+    ])
   upgraded.close()
 })
 

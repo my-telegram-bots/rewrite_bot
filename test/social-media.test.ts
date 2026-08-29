@@ -17,7 +17,7 @@ const jsonResponse = (body: unknown, init: ResponseInit = {}) => new Response(JS
 
 test('recognizes exact Twitter, X, and Bluesky post URLs without accepting lookalikes', () => {
   expect(parseSocialPostUrl('https://x.com/example/status/2088659395874037770/photo/1')).toMatchObject({
-    provider: 'twitter', id: '2088659395874037770',
+    provider: 'twitter', id: '2088659395874037770', selection: { kind: 'photo', index: 1 },
   })
   expect(parseSocialPostUrl('https://twitter.com/i/web/status/1234567890')).toMatchObject({
     provider: 'twitter', id: '1234567890',
@@ -121,6 +121,11 @@ test('builds native downloadable Telegram results and localized actionable failu
     id: 'media-photo-1', type: 'photo', photo_url: 'https://cdn.bsky.app/img/photo', title: '下载图片 1/2',
   })
   expect((results[0] as Extract<InlineQueryResult, { type: 'photo' }>).caption?.startsWith('\u200C')).toBe(true)
+  expect((results[0] as Extract<InlineQueryResult, { type: 'photo' }>).caption_entities).toEqual([
+    { type: 'blockquote', offset: 1, length: 'hello 😀'.length },
+    { type: 'bold', offset: 1 + 'hello 😀'.length + 2, length: 'Bluesky (@bsky.app)'.length },
+    expect.objectContaining({ type: 'text_link', url: resolution.post.sourceUrl }),
+  ])
   expect(results[1]).toMatchObject({ id: 'media-gif-2', type: 'mpeg4_gif', title: '下载动画 2/2' })
 
   const failed = socialMediaInlineResults({ state: 'failed' }, (key, values) => i18n.t('en', key, values))
