@@ -312,7 +312,8 @@ test('mixed-text Twitter inline variants begin with the one processed marker', a
       .toBe(true)
     expect(results.find(({ id }) => id === 'vxtwitter-link')?.input_message_content.message_text.startsWith('\u200C'))
       .toBe(true)
-    expect(results.find(({ id }) => id === 'media-combined')).toMatchObject({
+    expect(results[0]).toMatchObject({
+      id: 'media-combined',
       type: 'photo',
       photo_url: 'https://mosaic.fxtwitter.com/jpeg/1234567890/one/two',
       title: 'Download combined image',
@@ -391,6 +392,12 @@ test('direct X photo link resolves selected original media with quoted localized
     expect(calls[0].payload.caption_entities).toEqual([
       { type: 'blockquote', offset: 1, length: '正文 😀'.length },
       { type: 'bold', offset: 1 + '正文 😀'.length + 2, length: '作者 (@author)'.length },
+      {
+        type: 'text_link',
+        offset: 1 + '正文 😀'.length + 2 + '作者 ('.length,
+        length: '@author'.length,
+        url: 'https://twitter.com/author',
+      },
       { type: 'text_link', offset: (calls[0].payload.caption as string).length - '查看原帖'.length, length: '查看原帖'.length, url },
     ])
   } finally {

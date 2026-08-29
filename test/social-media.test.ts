@@ -118,8 +118,8 @@ test('offers a trusted FxTwitter JPEG mosaic without replacing original photos',
     },
   })
   const results = socialMediaInlineResults(resolved, (key, values) => i18n.t('en', key, values))
-  expect(results.map(({ id }) => id)).toEqual(['media-photo-1', 'media-photo-2', 'media-combined'])
-  expect(results[2]).toMatchObject({
+  expect(results.map(({ id }) => id)).toEqual(['media-combined', 'media-photo-1', 'media-photo-2'])
+  expect(results[0]).toMatchObject({
     type: 'photo', title: 'Download combined image',
     photo_url: 'https://mosaic.fxtwitter.com/jpeg/id/a/b',
   })
@@ -171,6 +171,12 @@ test('builds native downloadable Telegram results and localized actionable failu
   expect((results[0] as Extract<InlineQueryResult, { type: 'photo' }>).caption_entities).toEqual([
     { type: 'blockquote', offset: 1, length: 'hello 😀'.length },
     { type: 'bold', offset: 1 + 'hello 😀'.length + 2, length: 'Bluesky (@bsky.app)'.length },
+    {
+      type: 'text_link',
+      offset: 1 + 'hello 😀'.length + 2 + 'Bluesky ('.length,
+      length: '@bsky.app'.length,
+      url: 'https://bsky.app/profile/bsky.app',
+    },
     expect.objectContaining({ type: 'text_link', url: resolution.post.sourceUrl }),
   ])
   expect(results[1]).toMatchObject({ id: 'media-gif-2', type: 'mpeg4_gif', title: '下载动画 2/2' })

@@ -81,7 +81,7 @@ export function socialMediaInlineResults(
     }
   })
   if (resolution.post.combinedImage) {
-    results.push({
+    results.unshift({
       id: 'media-combined',
       type: 'photo',
       title: t('inline-media-combined-title'),
