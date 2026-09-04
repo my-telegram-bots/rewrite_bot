@@ -44,6 +44,7 @@ export interface ResolvedSocialPost {
 
 export type SocialMediaResolution =
   | { state: 'ok'; post: ResolvedSocialPost }
+  | { state: 'no_media' }
   | { state: 'not_found' }
   | { state: 'failed' }
 
@@ -101,8 +102,10 @@ function videoFrom(value: unknown, provider: SocialProvider): ResolvedVideo | un
     }))
     .filter((format): format is { url: string; score: number } => Boolean(format.url))
     .sort((left, right) => right.score - left.score)
-  const primaryIsMp4 = item.format === 'video/mp4' || formats.some((format) => format.container === 'mp4')
-  const url = compatible[0]?.url || (primaryIsMp4 ? trustedHttpsUrl(item.url, provider) : undefined)
+  const hasDeclaredMp4Format = formats.some((format) => format.container === 'mp4')
+  const url = compatible[0]?.url || (item.format === 'video/mp4' && !hasDeclaredMp4Format
+    ? trustedHttpsUrl(item.url, provider)
+    : undefined)
   const thumbnailUrl = trustedHttpsUrl(item.thumbnail_url, provider)
   if (!url || !thumbnailUrl) return undefined
   return {
@@ -115,12 +118,15 @@ function videoFrom(value: unknown, provider: SocialProvider): ResolvedVideo | un
   }
 }
 
-function mediaFromStatus(status: JsonRecord, provider: SocialProvider): ResolvedMedia[] {
+function topLevelMediaItems(status: JsonRecord): unknown[] {
   const media = record(status.media)
   if (!media) return []
-  const ordered = Array.isArray(media.all)
-    ? media.all
-    : [...(Array.isArray(media.photos) ? media.photos : []), ...(Array.isArray(media.videos) ? media.videos : [])]
+  if (Array.isArray(media.all) && media.all.length > 0) return media.all
+  return [...(Array.isArray(media.photos) ? media.photos : []), ...(Array.isArray(media.videos) ? media.videos : [])]
+}
+
+function mediaFromStatus(status: JsonRecord, provider: SocialProvider): ResolvedMedia[] {
+  const ordered = topLevelMediaItems(status)
   const results: ResolvedMedia[] = []
   const seen = new Set<string>()
   for (const item of ordered) {
@@ -131,6 +137,10 @@ function mediaFromStatus(status: JsonRecord, provider: SocialProvider): Resolved
     }
   }
   return results
+}
+
+function hasTopLevelMedia(status: JsonRecord): boolean {
+  return topLevelMediaItems(status).length > 0
 }
 
 function combinedImageFromStatus(status: JsonRecord, provider: SocialProvider): ResolvedPhoto | undefined {
@@ -210,6 +220,7 @@ export async function resolveSocialMedia(
     if (!payload || payload.code !== 200 || !status || status.type !== 'status') return { state: 'not_found' }
     const provider = status.provider === reference.provider ? reference.provider : undefined
     if (!provider) return { state: 'failed' }
+    if (!hasTopLevelMedia(status)) return { state: 'no_media' }
     const media = selectedMedia(mediaFromStatus(status, provider), reference)
     return {
       state: 'ok',

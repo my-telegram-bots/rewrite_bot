@@ -130,6 +130,77 @@ test('offers a trusted FxTwitter JPEG mosaic without replacing original photos',
   expect(rejected).toMatchObject({ state: 'ok', post: { combinedImage: undefined } })
 })
 
+test.each([
+  {
+    name: 'Twitter',
+    reference: { provider: 'twitter', id: '1234567890', sourceUrl: 'https://x.com/a/status/1234567890' } as const,
+  },
+  {
+    name: 'Bluesky',
+    reference: {
+      provider: 'bluesky', handle: 'bsky.app', rkey: '3abc',
+      sourceUrl: 'https://bsky.app/profile/bsky.app/post/3abc',
+    } as const,
+  },
+])('treats a valid text-only $name post as no_media', async ({ reference }) => {
+  await expect(resolveSocialMedia(reference, {
+    fetchImpl: (async () => jsonResponse({
+      code: 200,
+      status: { type: 'status', provider: reference.provider, text: 'text only' },
+    })) as typeof fetch,
+  })).resolves.toEqual({ state: 'no_media' })
+})
+
+test('does not treat quoted-post or link-preview images as top-level media', async () => {
+  const reference = { provider: 'twitter', id: '1234567890', sourceUrl: 'https://x.com/a/status/1234567890' } as const
+  await expect(resolveSocialMedia(reference, {
+    fetchImpl: (async () => jsonResponse({
+      code: 200,
+      status: {
+        type: 'status', provider: 'twitter', text: 'quoted image and preview',
+        quote: { media: { all: [{ type: 'photo', url: 'https://pbs.twimg.com/media/quoted.jpg' }] } },
+        embeds: [{ type: 'photo', url: 'https://pbs.twimg.com/media/preview.jpg' }],
+      },
+    })) as typeof fetch,
+  })).resolves.toEqual({ state: 'no_media' })
+})
+
+test.each([
+  {
+    name: 'HLS-only video',
+    media: {
+      type: 'video', format: 'application/x-mpegURL', url: 'https://video.twimg.com/list.m3u8',
+      thumbnail_url: 'https://pbs.twimg.com/thumb.jpg',
+      formats: [{ container: 'm3u8', url: 'https://video.twimg.com/list.m3u8' }],
+    },
+  },
+  {
+    name: 'non-H.264 video',
+    media: {
+      type: 'video', format: 'video/mp4', url: 'https://video.twimg.com/hevc.mp4',
+      thumbnail_url: 'https://pbs.twimg.com/thumb.jpg',
+      formats: [{ container: 'mp4', codec: 'hevc', url: 'https://video.twimg.com/hevc.mp4' }],
+    },
+  },
+  { name: 'untrusted photo', media: { type: 'photo', url: 'https://evil.test/image.jpg' } },
+])('keeps MEDIA_NOT_FOUND for top-level $name', async ({ media }) => {
+  const resolution = await resolveSocialMedia(
+    { provider: 'twitter', id: '1234567890', sourceUrl: 'https://x.com/a/status/1234567890' },
+    {
+      fetchImpl: (async () => jsonResponse({
+        code: 200,
+        status: { type: 'status', provider: 'twitter', text: 'incompatible', media: { all: [media] } },
+      })) as typeof fetch,
+    },
+  )
+  expect(resolution).toMatchObject({ state: 'ok', post: { media: [] } })
+  expect(socialMediaInlineResults(resolution, (key, values) => i18n.t('en', key, values)))
+    .toEqual([expect.objectContaining({
+      id: 'media-not-found',
+      input_message_content: { message_text: expect.stringContaining('MEDIA_NOT_FOUND') },
+    })])
+})
+
 test('fails closed on oversized metadata, invalid content type, provider mismatch, and timeout', async () => {
   const reference = { provider: 'twitter', id: '1234567890', sourceUrl: 'https://x.com/a/status/1234567890' } as const
   await expect(resolveSocialMedia(reference, {
@@ -139,6 +210,9 @@ test('fails closed on oversized metadata, invalid content type, provider mismatc
   await expect(resolveSocialMedia(reference, {
     fetchImpl: (async () => new Response('no', { headers: { 'content-type': 'text/plain' } })) as typeof fetch,
   })).resolves.toEqual({ state: 'failed' })
+  await expect(resolveSocialMedia(reference, {
+    fetchImpl: (async () => jsonResponse({ code: 404 }, { status: 404 })) as typeof fetch,
+  })).resolves.toEqual({ state: 'not_found' })
   await expect(resolveSocialMedia(reference, {
     fetchImpl: (async () => jsonResponse({ code: 200, status: { type: 'status', provider: 'bluesky' } })) as typeof fetch,
   })).resolves.toEqual({ state: 'failed' })
@@ -187,4 +261,11 @@ test('builds native downloadable Telegram results and localized actionable failu
   const missing = socialMediaInlineResults({ state: 'not_found' }, (key, values) => i18n.t('zh-Hans', key, values))
   expect((missing[0] as Extract<InlineQueryResult, { type: 'article' }>).input_message_content)
     .toMatchObject({ message_text: expect.stringContaining('MEDIA_NOT_FOUND') })
+  const textOnly = socialMediaInlineResults({ state: 'no_media' }, (key, values) => i18n.t('en', key, values))
+  expect(textOnly[0]).toMatchObject({
+    id: 'media-no-media',
+    input_message_content: {
+      message_text: expect.stringMatching(/text-only post.*MEDIA_NOT_FOUND/s),
+    },
+  })
 })

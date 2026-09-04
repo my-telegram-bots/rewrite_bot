@@ -276,6 +276,58 @@ test('inline query resolves a Bluesky post into native downloadable media before
   }
 })
 
+test('text-only inline posts keep provider links, utilities, and the informational no-media result', async () => {
+  const originalFetch = global.fetch
+  const fetchMock = jest.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify({
+    code: 200,
+    status: {
+      type: 'status',
+      provider: String(input).includes('fxbsky') ? 'bluesky' : 'twitter',
+      text: 'plain text',
+      quote: { media: { all: [{ type: 'photo', url: 'https://pbs.twimg.com/media/quoted.jpg' }] } },
+    },
+  }), { headers: { 'content-type': 'application/json' } }))
+  global.fetch = fetchMock as typeof fetch
+  try {
+    const { bot } = await import('../src/bot')
+    await bot.handleUpdate({
+      update_id: 38,
+      inline_query: {
+        id: 'inline-text-only-x', offset: '', query: 'https://x.com/author/status/2093597769160438054',
+        from: { id: 38, is_bot: false, first_name: 'Text', language_code: 'en' },
+      },
+    })
+    let answer = calls.find(({ method }) => method === 'answerInlineQuery')!
+    let results = answer.payload.results as Array<{
+      id: string
+      input_message_content?: { message_text: string }
+    }>
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(results.map(({ id }) => id)).toEqual(expect.arrayContaining([
+      'media-no-media', 'fxtwitter-link', 'vxtwitter-link', 'split-character', 'md5', 'base64-encode',
+    ]))
+    expect(results.find(({ id }) => id === 'media-no-media')?.input_message_content?.message_text)
+      .toMatch(/text-only post.*MEDIA_NOT_FOUND/s)
+
+    calls.length = 0
+    await bot.handleUpdate({
+      update_id: 39,
+      inline_query: {
+        id: 'inline-text-only-bsky', offset: '', query: 'https://bsky.app/profile/bsky.app/post/3l3vgf77uco2g',
+        from: { id: 38, is_bot: false, first_name: 'Text', language_code: 'en' },
+      },
+    })
+    answer = calls.find(({ method }) => method === 'answerInlineQuery')!
+    results = answer.payload.results as Array<{ id: string }>
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(results.map(({ id }) => id)).toEqual(expect.arrayContaining([
+      'media-no-media', 'fxbluesky-link', 'split-character', 'md5', 'base64-encode',
+    ]))
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
 test('mixed-text Twitter inline variants begin with the one processed marker', async () => {
   const originalFetch = global.fetch
   global.fetch = jest.fn(async () => new Response(JSON.stringify({
@@ -422,6 +474,81 @@ test('group replace sends X media before deleting the original and explains dele
       text: expect.stringContaining('URL_DELETE_PERMISSION'),
       reply_parameters: { message_id: 48, allow_sending_without_reply: true },
     })
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
+test('direct text-only posts stay silent unless ordinary cleanup changes the URL', async () => {
+  const originalFetch = global.fetch
+  const fetchMock = jest.fn(async () => new Response(JSON.stringify({
+    code: 200,
+    status: { type: 'status', provider: 'twitter', text: 'plain text' },
+  }), { headers: { 'content-type': 'application/json' } }))
+  global.fetch = fetchMock as typeof fetch
+  try {
+    const { bot } = await import('../src/bot')
+    const cleanUrl = 'https://x.com/author/status/2093597769160438055'
+    await bot.handleUpdate({
+      update_id: 40,
+      message: {
+        message_id: 49, date: 1, text: cleanUrl,
+        entities: [{ type: 'url', offset: 0, length: cleanUrl.length }],
+        chat: { id: 40, type: 'private', first_name: 'Text only' },
+        from: { id: 40, is_bot: false, first_name: 'Text only', language_code: 'en' },
+      },
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(calls).toEqual([])
+
+    await bot.handleUpdate({
+      update_id: 41,
+      message: {
+        message_id: 50, date: 1, text: cleanUrl,
+        entities: [{ type: 'url', offset: 0, length: cleanUrl.length }],
+        chat: { id: -240, type: 'supergroup', title: 'Text only' },
+        from: { id: 40, is_bot: false, first_name: 'Text only', language_code: 'en' },
+      },
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(calls).toEqual([])
+
+    const trackedUrl = `${cleanUrl}?utm_source=telegram`
+    await bot.handleUpdate({
+      update_id: 42,
+      message: {
+        message_id: 51, date: 1, text: trackedUrl,
+        entities: [{ type: 'url', offset: 0, length: trackedUrl.length }],
+        chat: { id: 40, type: 'private', first_name: 'Text cleanup' },
+        from: { id: 40, is_bot: false, first_name: 'Text only', language_code: 'en' },
+      },
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(calls.map(({ method }) => method)).toEqual(['sendMessage'])
+    expect(calls[0].payload).toMatchObject({
+      chat_id: 40,
+      text: cleanUrl,
+      reply_parameters: { message_id: 51, allow_sending_without_reply: true },
+    })
+
+    calls.length = 0
+    await bot.handleUpdate({
+      update_id: 43,
+      message: {
+        message_id: 52, date: 1, text: trackedUrl,
+        entities: [{ type: 'url', offset: 0, length: trackedUrl.length }],
+        chat: { id: -241, type: 'supergroup', title: 'Text cleanup' },
+        from: { id: 40, is_bot: false, first_name: 'Text only', language_code: 'en' },
+      },
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(calls.map(({ method }) => method)).toEqual(['sendMessage', 'deleteMessage'])
+    expect(calls[0].payload).toMatchObject({
+      chat_id: -241,
+      text: cleanUrl,
+      reply_parameters: { message_id: 52, allow_sending_without_reply: true },
+    })
+    expect(calls[1].payload).toMatchObject({ chat_id: -241, message_id: 52 })
   } finally {
     global.fetch = originalFetch
   }

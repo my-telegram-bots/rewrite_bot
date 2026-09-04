@@ -30,7 +30,7 @@ export async function deliverSocialMedia(
   resolution: SocialMediaResolution,
   t: Translator,
   multiImageMode: MultiImageMode = 'media_group',
-): Promise<'sent' | 'failed' | 'not_found'> {
+): Promise<'sent' | 'failed' | 'no_media' | 'not_found'> {
   const reply_parameters: ReplyParameters = {
     message_id: messageId,
     allow_sending_without_reply: true,
@@ -39,6 +39,7 @@ export async function deliverSocialMedia(
     await api.sendMessage(chatId, t('direct-media-failed-body'), { reply_parameters })
     return 'failed'
   }
+  if (resolution.state === 'no_media') return 'no_media'
   if (resolution.state === 'not_found' || resolution.post.media.length === 0) {
     await api.sendMessage(chatId, t('direct-media-not-found-body'), { reply_parameters })
     return 'not_found'

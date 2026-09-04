@@ -50,7 +50,7 @@ async function handleTextMessage(
     if (delivery === 'sent' && !isPrivate && mode === 'replace') {
       await deleteOriginalAfterDelivery(api, chatId, message.message_id, t)
     }
-    return
+    if (delivery !== 'no_media') return
   }
   if (!result.changed) return
   await deliverCleanedMessage(

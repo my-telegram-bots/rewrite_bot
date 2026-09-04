@@ -25,6 +25,15 @@ export function socialMediaInlineResults(
       input_message_content: { message_text: t('inline-media-failed-body') },
     }]
   }
+  if (resolution.state === 'no_media') {
+    return [{
+      id: 'media-no-media',
+      type: 'article',
+      title: t('inline-media-no-media-title'),
+      description: t('inline-media-no-media-body').slice(0, 64),
+      input_message_content: { message_text: t('inline-media-no-media-body') },
+    }]
+  }
   if (resolution.state === 'not_found' || resolution.post.media.length === 0) {
     return [{
       id: 'media-not-found',
