@@ -55,35 +55,35 @@ function api(deleteFails = false): DeliveryApi & { sendMessage: jest.Mock; delet
   }
 }
 
-test('replace sends first, then deletes; delete failure keeps both messages and explains recovery', async () => {
+test('replace sends first, then deletes; delete failure quietly keeps both messages', async () => {
   const successful = api()
-  await expect(deliverCleanedMessage(successful, -1, 5, 'clean', [], 'replace', t)).resolves.toBe('replaced')
+  await expect(deliverCleanedMessage(successful, -1, 5, 'clean', [], 'replace')).resolves.toBe('replaced')
   expect(successful.sendMessage.mock.invocationCallOrder[0]).toBeLessThan(successful.deleteMessage.mock.invocationCallOrder[0])
 
   const failed = api(true)
-  await expect(deliverCleanedMessage(failed, -1, 5, 'clean', [], 'replace', t)).resolves.toBe('fallback')
-  expect(failed.sendMessage).toHaveBeenCalledTimes(2)
-  expect(failed.sendMessage.mock.calls[1][1]).toContain('delete-permission-fallback')
+  await expect(deliverCleanedMessage(failed, -1, 5, 'clean', [], 'replace')).resolves.toBe('retained')
+  expect(failed.sendMessage).toHaveBeenCalledTimes(1)
+  expect(failed.sendMessage).toHaveBeenCalledWith(
+    -1,
+    'clean',
+    { entities: [], reply_parameters: { message_id: 5, allow_sending_without_reply: true } },
+  )
 })
 
-test('successful non-text delivery shares replace deletion and permission recovery', async () => {
+test('successful non-text delivery shares replace deletion and silently retains on failure', async () => {
   const successful = api()
-  await expect(deleteOriginalAfterDelivery(successful, -1, 5, t)).resolves.toBe('replaced')
+  await expect(deleteOriginalAfterDelivery(successful, -1, 5)).resolves.toBe('replaced')
   expect(successful.deleteMessage).toHaveBeenCalledWith(-1, 5)
   expect(successful.sendMessage).not.toHaveBeenCalled()
 
   const failed = api(true)
-  await expect(deleteOriginalAfterDelivery(failed, -1, 5, t)).resolves.toBe('fallback')
-  expect(failed.sendMessage).toHaveBeenCalledWith(
-    -1,
-    expect.stringContaining('delete-permission-fallback'),
-    { reply_parameters: { message_id: 5, allow_sending_without_reply: true } },
-  )
+  await expect(deleteOriginalAfterDelivery(failed, -1, 5)).resolves.toBe('retained')
+  expect(failed.sendMessage).not.toHaveBeenCalled()
 })
 
-test('reply mode never deletes and keeps recovery adjacent through reply_parameters', async () => {
+test('reply mode never deletes and keeps the clean reply adjacent through reply_parameters', async () => {
   const target = api()
-  await expect(deliverCleanedMessage(target, -1, 5, 'clean', [], 'reply', t)).resolves.toBe('replied')
+  await expect(deliverCleanedMessage(target, -1, 5, 'clean', [], 'reply')).resolves.toBe('replied')
   expect(target.deleteMessage).not.toHaveBeenCalled()
   expect(target.sendMessage.mock.calls[0][2]).toMatchObject({
     reply_parameters: { message_id: 5, allow_sending_without_reply: true },

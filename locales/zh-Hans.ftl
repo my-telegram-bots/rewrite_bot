@@ -43,7 +43,6 @@ chat-admin-view-only = 你不是管理员，只能查看这些设置。
 button-mode-replace = { $selected } 替换
 button-mode-reply = { $selected } 回复
 button-mode-off = { $selected } 关闭
-delete-permission-fallback = 未能删除原消息：bot 缺少“删除消息”权限。原消息已保留；请授予权限后重试。[URL_DELETE_PERMISSION]
 inline-clean-title = 清理追踪参数
 inline-split-title = 分隔字符
 inline-too-long-title = 错误：文本过长

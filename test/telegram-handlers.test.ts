@@ -410,7 +410,7 @@ test('inline query beginning with the bot zero-width marker also bypasses URL cl
     .toContain('u t m _ s o u r c e = t e s t')
 })
 
-test('group replace sends X media before deleting the original and explains deletion failure', async () => {
+test('group replace sends X media before deleting the original and stays silent on deletion failure', async () => {
   const originalFetch = global.fetch
   const fetchMock = jest.fn(async () => new Response(JSON.stringify({
     code: 200,
@@ -468,12 +468,7 @@ test('group replace sends X media before deleting the original and explains dele
         from: { id: 22, is_bot: false, first_name: 'Sender', language_code: 'zh-CN' },
       },
     })
-    expect(calls.map(({ method }) => method)).toEqual(['sendPhoto', 'deleteMessage', 'sendMessage'])
-    expect(calls[2].payload).toMatchObject({
-      chat_id: -222,
-      text: expect.stringContaining('URL_DELETE_PERMISSION'),
-      reply_parameters: { message_id: 48, allow_sending_without_reply: true },
-    })
+    expect(calls.map(({ method }) => method)).toEqual(['sendPhoto', 'deleteMessage'])
   } finally {
     global.fetch = originalFetch
   }

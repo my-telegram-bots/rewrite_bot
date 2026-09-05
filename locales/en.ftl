@@ -43,7 +43,6 @@ chat-admin-view-only = You are not an administrator and can only view these sett
 button-mode-replace = { $selected } Replace
 button-mode-reply = { $selected } Reply
 button-mode-off = { $selected } Off
-delete-permission-fallback = Could not delete the original because the bot lacks the Delete Messages permission. The original was kept. Grant that permission and try again. [URL_DELETE_PERMISSION]
 inline-clean-title = Clean tracking parameters
 inline-split-title = Split characters
 inline-too-long-title = Error: text too long

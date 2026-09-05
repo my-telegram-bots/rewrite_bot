@@ -48,7 +48,7 @@ async function handleTextMessage(
       settings.multiImageMode,
     )
     if (delivery === 'sent' && !isPrivate && mode === 'replace') {
-      await deleteOriginalAfterDelivery(api, chatId, message.message_id, t)
+      await deleteOriginalAfterDelivery(api, chatId, message.message_id)
     }
     if (delivery !== 'no_media') return
   }
@@ -60,7 +60,6 @@ async function handleTextMessage(
     result.text,
     result.entities,
     mode,
-    t,
   )
 }
 

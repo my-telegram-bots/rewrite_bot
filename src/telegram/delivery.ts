@@ -1,5 +1,4 @@
 import type { MessageEntity } from 'grammy/types'
-import { Translator } from '../context'
 import { ChatMode } from '../db'
 
 export interface DeliveryApi {
@@ -15,19 +14,15 @@ export function shouldCleanMessage(cleanupEnabled: boolean, mode: ChatMode): boo
 }
 
 export async function deleteOriginalAfterDelivery(
-  api: DeliveryApi,
+  api: Pick<DeliveryApi, 'deleteMessage'>,
   chatId: number,
   messageId: number,
-  t: Translator,
-): Promise<'replaced' | 'fallback'> {
+): Promise<'replaced' | 'retained'> {
   try {
     await api.deleteMessage(chatId, messageId)
     return 'replaced'
   } catch {
-    await api.sendMessage(chatId, `⚠️ ${t('delete-permission-fallback')}`, {
-      reply_parameters: { message_id: messageId, allow_sending_without_reply: true },
-    })
-    return 'fallback'
+    return 'retained'
   }
 }
 
@@ -38,14 +33,13 @@ export async function deliverCleanedMessage(
   text: string,
   entities: MessageEntity[],
   mode: ChatMode,
-  t: Translator,
-): Promise<'replaced' | 'replied' | 'fallback'> {
+): Promise<'replaced' | 'replied' | 'retained'> {
   if (mode === 'replace') {
     await api.sendMessage(chatId, text, {
       entities,
       reply_parameters: { message_id: messageId, allow_sending_without_reply: true },
     })
-    return deleteOriginalAfterDelivery(api, chatId, messageId, t)
+    return deleteOriginalAfterDelivery(api, chatId, messageId)
   }
   await api.sendMessage(chatId, text, {
     entities,
