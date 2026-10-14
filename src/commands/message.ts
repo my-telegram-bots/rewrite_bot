@@ -11,6 +11,7 @@ import {
   shouldCleanMessage,
 } from '../telegram/delivery'
 import { startsWithProcessedMarker } from '../telegram/processed-marker'
+import { isMessageExpired } from '../telegram/message-age'
 
 async function handleTextMessage(
   api: DeliveryApi & MediaDeliveryApi,
@@ -19,6 +20,7 @@ async function handleTextMessage(
   t: Translator,
   privateUserId?: number,
 ): Promise<void> {
+  if (isMessageExpired(message.date)) return
   if (startsWithProcessedMarker(message.text)) return
   const isPrivate = privateUserId !== undefined
   const userSettings = isPrivate ? dbRepositories().getOrCreateUserSettings(privateUserId) : undefined
@@ -33,17 +35,20 @@ async function handleTextMessage(
       redirectResolver: settings.expandShortUrls ? expandShortUrl : undefined,
     })
     : { text: message.text, entities: message.entities || [], changed: false }
+  if (isMessageExpired(message.date)) return
   const linkedReference = result.entities
     .filter((entity) => entity.type === 'text_link')
     .map((entity) => entity.type === 'text_link' ? findFirstSocialPost(entity.url) : undefined)
     .find(Boolean)
   const reference = settings.socialMediaEnabled ? findFirstSocialPost(result.text) || linkedReference : undefined
   if (reference) {
+    const resolution = await resolveSocialMedia(reference)
+    if (isMessageExpired(message.date)) return
     const delivery = await deliverSocialMedia(
       api,
       chatId,
       message.message_id,
-      await resolveSocialMedia(reference),
+      resolution,
       t,
       settings.multiImageMode,
     )
@@ -52,7 +57,7 @@ async function handleTextMessage(
     }
     if (delivery !== 'no_media') return
   }
-  if (!result.changed) return
+  if (!result.changed || isMessageExpired(message.date)) return
   await deliverCleanedMessage(
     api,
     chatId,

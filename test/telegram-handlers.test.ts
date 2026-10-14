@@ -85,6 +85,138 @@ beforeEach(() => {
   deleteFails = false
 })
 
+afterEach(() => jest.restoreAllMocks())
+
+test.each(['private', 'supergroup', 'channel'] as const)(
+  '%s automatic messages older than five minutes are silently ignored before any work',
+  async (type) => {
+    jest.spyOn(Date, 'now').mockReturnValue(2_000_000_000_000)
+    const { bot } = await import('../src/bot')
+    const { dbRepositories } = await import('../src/db')
+    const userSettings = jest.spyOn(dbRepositories(), 'getOrCreateUserSettings')
+    const chatSettings = jest.spyOn(dbRepositories(), 'getOrCreateChatSettings')
+    const originalFetch = global.fetch
+    const fetchMock = jest.fn()
+    global.fetch = fetchMock as typeof fetch
+    try {
+      const text = 'https://x.com/author/status/2093597769160438051?utm_source=test'
+      const message = {
+        message_id: 200, date: 2_000_000_000 - 301, text,
+        entities: [{ type: 'url' as const, offset: 0, length: text.length }],
+        from: { id: 200, is_bot: false, first_name: 'Old', language_code: 'en' },
+      }
+      await bot.handleUpdate({
+        update_id: 200,
+        ...(type === 'channel'
+          ? { channel_post: { ...message, chat: { id: -200, type, title: 'Old' } } }
+          : { message: {
+            ...message,
+            chat: type === 'private'
+              ? { id: 200, type, first_name: 'Old' }
+              : { id: -200, type, title: 'Old' },
+          } }),
+      })
+      expect(userSettings).not.toHaveBeenCalled()
+      expect(chatSettings).not.toHaveBeenCalled()
+      expect(fetchMock).not.toHaveBeenCalled()
+      expect(calls).toEqual([])
+    } finally {
+      global.fetch = originalFetch
+    }
+  },
+)
+
+test.each([299_000, 300_000, 300_001])(
+  'automatic cleanup uses a strict five-minute boundary at age %i ms',
+  async (age) => {
+    jest.spyOn(Date, 'now').mockReturnValue(2_000_000_000_000 + age)
+    const { bot } = await import('../src/bot')
+    const text = 'https://example.com/x?utm_source=test'
+    await bot.handleUpdate({
+      update_id: 201,
+      message: {
+        message_id: 201, date: 2_000_000_000, text,
+        entities: [{ type: 'url', offset: 0, length: text.length }],
+        chat: { id: -201, type: 'supergroup', title: 'Boundary' },
+        from: { id: 201, is_bot: false, first_name: 'Boundary', language_code: 'en' },
+      },
+    })
+    expect(calls.map(({ method }) => method))
+      .toEqual(age > 300_000 ? [] : ['sendMessage', 'deleteMessage'])
+    if (age <= 300_000) expect(calls[0].payload.text).toBe('https://example.com/x')
+  },
+)
+
+test.each(['media', 'no_media', 'failed'] as const)(
+  'expiry during social lookup suppresses %s output and preserves the original',
+  async (outcome) => {
+    const now = jest.spyOn(Date, 'now').mockReturnValue(2_000_000_000_000)
+    const originalFetch = global.fetch
+    const fetchMock = jest.fn(async () => {
+      now.mockReturnValue(2_000_000_000_000 + 2_000)
+      return outcome === 'failed'
+        ? new Response('unavailable', { status: 503 })
+        : new Response(JSON.stringify({
+          code: 200,
+          status: {
+            type: 'status', provider: 'twitter', text: 'post',
+            ...(outcome === 'media' ? {
+              media: { all: [{ type: 'photo', url: 'https://pbs.twimg.com/media/expiry.jpg' }] },
+            } : {}),
+          },
+        }), { headers: { 'content-type': 'application/json' } })
+    })
+    global.fetch = fetchMock as typeof fetch
+    try {
+      const { bot } = await import('../src/bot')
+      const text = 'https://x.com/author/status/2093597769160438051?utm_source=test'
+      await bot.handleUpdate({
+        update_id: 202,
+        message: {
+          message_id: 202, date: 2_000_000_000 - 299, text,
+          entities: [{ type: 'url', offset: 0, length: text.length }],
+          chat: { id: -202, type: 'supergroup', title: 'Expiry' },
+          from: { id: 202, is_bot: false, first_name: 'Expiry', language_code: 'en' },
+        },
+      })
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(calls).toEqual([])
+    } finally {
+      global.fetch = originalFetch
+    }
+  },
+)
+
+test('expiry during URL processing stops before social lookup or delivery', async () => {
+  const now = jest.spyOn(Date, 'now').mockReturnValue(2_000_000_000_000)
+  const entities = await import('../src/url/entities')
+  jest.spyOn(entities, 'cleanTelegramEntities').mockImplementationOnce(async (text, entities) => {
+    now.mockReturnValue(2_000_000_000_000 + 2_000)
+    return { text, entities: [...entities], changed: true }
+  })
+  const originalFetch = global.fetch
+  const fetchMock = jest.fn()
+  global.fetch = fetchMock as typeof fetch
+  try {
+    const { bot } = await import('../src/bot')
+    const text = 'https://x.com/author/status/2093597769160438051'
+    await bot.handleUpdate({
+      update_id: 203,
+      message: {
+        message_id: 203, date: 2_000_000_000 - 299, text,
+        entities: [{ type: 'url', offset: 0, length: text.length }],
+        chat: { id: -203, type: 'supergroup', title: 'Expiry' },
+        from: { id: 203, is_bot: false, first_name: 'Expiry', language_code: 'en' },
+      },
+    })
+    expect(entities.cleanTelegramEntities).toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(calls).toEqual([])
+  } finally {
+    global.fetch = originalFetch
+  }
+})
+
 test('private /settings renders localized stable panel and callback persists through grammY', async () => {
   const { bot } = await import('../src/bot')
   const { dbRepositories } = await import('../src/db')
@@ -384,7 +516,7 @@ test('message beginning with the bot zero-width marker bypasses URL cleanup', as
   await bot.handleUpdate({
     update_id: 6,
     message: {
-      message_id: 30, date: 1, text: markedUrl,
+      message_id: 30, date: Math.floor(Date.now() / 1000), text: markedUrl,
       entities: [{ type: 'url', offset: 1, length: markedUrl.length - 1 }],
       chat: { id: 9, type: 'private', first_name: 'Marked' },
       from: { id: 9, is_bot: false, first_name: 'Marked', language_code: 'en' },
@@ -430,7 +562,7 @@ test('group replace sends X media before deleting the original and stays silent 
     await bot.handleUpdate({
       update_id: 22,
       message: {
-        message_id: 40, date: 1, text: url,
+        message_id: 40, date: Math.floor(Date.now() / 1000), text: url,
         entities: [{ type: 'url', offset: 0, length: url.length }],
         chat: { id: -222, type: 'supergroup', title: 'Media group' },
         from: { id: 22, is_bot: false, first_name: 'Sender', language_code: 'zh-CN' },
@@ -462,7 +594,7 @@ test('group replace sends X media before deleting the original and stays silent 
     await bot.handleUpdate({
       update_id: 37,
       message: {
-        message_id: 48, date: 1, text: url,
+        message_id: 48, date: Math.floor(Date.now() / 1000), text: url,
         entities: [{ type: 'url', offset: 0, length: url.length }],
         chat: { id: -222, type: 'supergroup', title: 'Media group' },
         from: { id: 22, is_bot: false, first_name: 'Sender', language_code: 'zh-CN' },
@@ -487,7 +619,7 @@ test('direct text-only posts stay silent unless ordinary cleanup changes the URL
     await bot.handleUpdate({
       update_id: 40,
       message: {
-        message_id: 49, date: 1, text: cleanUrl,
+        message_id: 49, date: Math.floor(Date.now() / 1000), text: cleanUrl,
         entities: [{ type: 'url', offset: 0, length: cleanUrl.length }],
         chat: { id: 40, type: 'private', first_name: 'Text only' },
         from: { id: 40, is_bot: false, first_name: 'Text only', language_code: 'en' },
@@ -499,7 +631,7 @@ test('direct text-only posts stay silent unless ordinary cleanup changes the URL
     await bot.handleUpdate({
       update_id: 41,
       message: {
-        message_id: 50, date: 1, text: cleanUrl,
+        message_id: 50, date: Math.floor(Date.now() / 1000), text: cleanUrl,
         entities: [{ type: 'url', offset: 0, length: cleanUrl.length }],
         chat: { id: -240, type: 'supergroup', title: 'Text only' },
         from: { id: 40, is_bot: false, first_name: 'Text only', language_code: 'en' },
@@ -512,7 +644,7 @@ test('direct text-only posts stay silent unless ordinary cleanup changes the URL
     await bot.handleUpdate({
       update_id: 42,
       message: {
-        message_id: 51, date: 1, text: trackedUrl,
+        message_id: 51, date: Math.floor(Date.now() / 1000), text: trackedUrl,
         entities: [{ type: 'url', offset: 0, length: trackedUrl.length }],
         chat: { id: 40, type: 'private', first_name: 'Text cleanup' },
         from: { id: 40, is_bot: false, first_name: 'Text only', language_code: 'en' },
@@ -530,7 +662,7 @@ test('direct text-only posts stay silent unless ordinary cleanup changes the URL
     await bot.handleUpdate({
       update_id: 43,
       message: {
-        message_id: 52, date: 1, text: trackedUrl,
+        message_id: 52, date: Math.floor(Date.now() / 1000), text: trackedUrl,
         entities: [{ type: 'url', offset: 0, length: trackedUrl.length }],
         chat: { id: -241, type: 'supergroup', title: 'Text cleanup' },
         from: { id: 40, is_bot: false, first_name: 'Text only', language_code: 'en' },
@@ -568,7 +700,7 @@ test('direct Bluesky video becomes a downloadable Telegram video reply', async (
     await bot.handleUpdate({
       update_id: 23,
       message: {
-        message_id: 41, date: 1, text: url,
+        message_id: 41, date: Math.floor(Date.now() / 1000), text: url,
         entities: [{ type: 'url', offset: 0, length: url.length }],
         chat: { id: 23, type: 'private', first_name: 'Video' },
         from: { id: 23, is_bot: false, first_name: 'Video', language_code: 'en' },
@@ -596,7 +728,7 @@ test('disabled social-media setting prevents direct and inline FxEmbed requests'
     await bot.handleUpdate({
       update_id: 24,
       message: {
-        message_id: 42, date: 1, text: url,
+        message_id: 42, date: Math.floor(Date.now() / 1000), text: url,
         entities: [{ type: 'url', offset: 0, length: url.length }],
         chat: { id: 24, type: 'private', first_name: 'Disabled' },
         from: { id: 24, is_bot: false, first_name: 'Disabled', language_code: 'en' },
@@ -652,7 +784,7 @@ test('direct multi-photo post uses a Telegram media group and lookup failures re
     await bot.handleUpdate({
       update_id: 28,
       message: {
-        message_id: 43, date: 1, text: url,
+        message_id: 43, date: Math.floor(Date.now() / 1000), text: url,
         entities: [{ type: 'url', offset: 0, length: url.length }],
         chat: { id: 28, type: 'private', first_name: 'Album' },
         from: { id: 28, is_bot: false, first_name: 'Album', language_code: 'en' },
@@ -677,7 +809,7 @@ test('direct multi-photo post uses a Telegram media group and lookup failures re
     await bot.handleUpdate({
       update_id: 36,
       message: {
-        message_id: 47, date: 1, text: url,
+        message_id: 47, date: Math.floor(Date.now() / 1000), text: url,
         entities: [{ type: 'url', offset: 0, length: url.length }],
         chat: { id: 33, type: 'private', first_name: 'Combined' },
         from: { id: 33, is_bot: false, first_name: 'Combined', language_code: 'en' },
@@ -697,7 +829,7 @@ test('direct multi-photo post uses a Telegram media group and lookup failures re
     await bot.handleUpdate({
       update_id: 29,
       message: {
-        message_id: 44, date: 1, text: url,
+        message_id: 44, date: Math.floor(Date.now() / 1000), text: url,
         entities: [{ type: 'url', offset: 0, length: url.length }],
         chat: { id: 29, type: 'private', first_name: 'Failure' },
         from: { id: 29, is_bot: false, first_name: 'Failure', language_code: 'en' },
@@ -727,7 +859,7 @@ test('direct text_link targets are parsed and the processed marker prevents medi
     await bot.handleUpdate({
       update_id: 30,
       message: {
-        message_id: 45, date: 1, text: '原帖',
+        message_id: 45, date: Math.floor(Date.now() / 1000), text: '原帖',
         entities: [{ type: 'text_link', offset: 0, length: 2, url: target }],
         chat: { id: 30, type: 'private', first_name: 'Linked' },
         from: { id: 30, is_bot: false, first_name: 'Linked', language_code: 'zh-CN' },
@@ -741,7 +873,7 @@ test('direct text_link targets are parsed and the processed marker prevents medi
     await bot.handleUpdate({
       update_id: 31,
       message: {
-        message_id: 46, date: 1, text: marked,
+        message_id: 46, date: Math.floor(Date.now() / 1000), text: marked,
         entities: [{ type: 'url', offset: 1, length: target.length }],
         chat: { id: 31, type: 'private', first_name: 'Marked' },
         from: { id: 31, is_bot: false, first_name: 'Marked', language_code: 'en' },
